@@ -23,7 +23,7 @@
   :root:not([data-theme="light"]) { --jc-logo-ink: #E9E2D2; --jc-logo-brass: #D9A853; }
 }
 
-.site-header { border-bottom: 1px solid var(--pico-muted-border-color); margin-bottom: 1.5rem; }
+.site-header { --pico-nav-element-spacing-vertical: 0.4rem; border-bottom: 1px solid var(--pico-muted-border-color); margin-bottom: 1.5rem; }
 .site-header nav a[aria-current="page"] { font-weight: 600; text-decoration: underline; text-underline-offset: 0.35em; }
 .brand { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--jc-logo-ink); text-decoration: none; }
 .brand:hover { text-decoration: none; }
@@ -33,7 +33,9 @@
 .logo-mark .brass { fill: var(--jc-logo-brass); }
 .logo-mark .wheel { fill: var(--pico-background-color); stroke: var(--jc-logo-ink); }
 .logo-mark .spokes { stroke: var(--jc-logo-ink); }
-.nav-cta { padding: 0.35rem 0.9rem; }
+/* Pico gives nav buttons a -0.5rem top margin but no matching bottom margin, which pushes them above the link text.
+   Equal negative margins that cancel the padding keep the button on the text baseline without growing the nav. */
+.site-header nav .nav-cta { padding: 0.35rem 0.9rem; margin-block: calc(-0.35rem - var(--pico-border-width)); }
 
 h1 { margin-bottom: 0.5rem; }
 article > header h2 { font-size: 1.1rem; margin: 0; }
