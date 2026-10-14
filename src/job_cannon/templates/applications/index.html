@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Applications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Applications</h1>
+  <a href="/applications/new" role="button">+ New application</a>
+</div>
+<form class="filters" hx-get="/applications" hx-target="#rows" hx-trigger="input delay:250ms, change" hx-push-url="true">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search company, role, location, notes…" aria-label="Search">
+  <select name="status" aria-label="Status">
+    <option value="">All statuses</option>
+    {% for s in STATUSES %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ STATUS_LABELS[s] }}</option>{% endfor %}
+  </select>
+  <noscript><button>Filter</button></noscript>
+</form>
+<div id="rows">{% include "applications/_rows.html" %}</div>
+{% endblock %}

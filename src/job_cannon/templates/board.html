@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import due %}
+{% block title %}Board{% endblock %}
+{% block main_class %}container-fluid{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Board</h1>
+  <small class="muted">Drag cards to change status or reorder.</small>
+</div>
+<div class="board">
+  {% for s in STATUSES %}
+  <section class="column status-{{ s }}">
+    <header>
+      <span class="col-title">{{ STATUS_LABELS[s] }}</span>
+      <span class="col-count">{{ columns[s]|length }}</span>
+    </header>
+    <ol class="cards" data-status="{{ s }}">
+      {% for a in columns[s] %}
+      <li class="card" data-id="{{ a.id }}">
+        <a href="/applications/{{ a.id }}">
+          <strong>{{ a.company_name }}</strong>
+          <span>{{ a.role }}</span>
+          {% if a.next_action_due %}<small>{{ a.next_action or 'Next action' }} {{ due(a.next_action_due, today) }}</small>{% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+    <a class="add-card" href="/applications/new?status={{ s }}">+ Add</a>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/Sortable.min.js"></script>
+<script src="/static/board.js"></script>
+{% endblock %}

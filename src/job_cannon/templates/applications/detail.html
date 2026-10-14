@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status_badge, due, interaction_form, interaction_list %}
+{% block title %}{{ app.company_name }} — {{ app.role }}{% endblock %}
+{% block content %}
+{% set here = '/applications/%d' % app.id %}
+<div class="page-head">
+  <hgroup>
+    <h1>{{ app.role }}</h1>
+    <p>{{ app.company_name }}{% if app.location %} · {{ app.location }}{% endif %}</p>
+  </hgroup>
+  <div class="head-actions">
+    <form method="post" action="{{ here }}/status" class="status-switch">
+      <select name="status" aria-label="Status" onchange="this.form.submit()">
+        {% for s in STATUSES %}<option value="{{ s }}" {% if s == app.status %}selected{% endif %}>{{ STATUS_LABELS[s] }}</option>{% endfor %}
+      </select>
+      <noscript><button>Set</button></noscript>
+    </form>
+    <a href="{{ here }}/edit" role="button" class="secondary outline">Edit</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <article>
+      <dl class="facts">
+        <dt>Status</dt><dd>{{ status_badge(app.status) }}</dd>
+        {% if app.posting_url %}<dt>Posting</dt><dd><a href="{{ app.posting_url|http_only }}" target="_blank" rel="noopener noreferrer">{{ app.posting_url|truncate(60) }}</a></dd>{% endif %}
+        {% if app.applied_on %}<dt>Applied</dt><dd>{{ app.applied_on }}</dd>{% endif %}
+        {% if app.source %}<dt>Source</dt><dd>{{ app.source }}</dd>{% endif %}
+        {% if app.salary_range %}<dt>Salary</dt><dd>{{ app.salary_range }}</dd>{% endif %}
+        {% if app.next_action or app.next_action_due %}<dt>Next action</dt><dd>{{ app.next_action }} {{ due(app.next_action_due, today) }}</dd>{% endif %}
+      </dl>
+      {% if app.notes %}<div class="notes">{{ app.notes }}</div>{% endif %}
+    </article>
+
+    <article id="interactions">
+      <header><h2>Interactions</h2></header>
+      {{ interaction_form(here + '#interactions', now_local, application_id=app.id, contacts=linked_contacts) }}
+      <hr>
+      {{ interaction_list(interactions, here + '#interactions') }}
+    </article>
+  </div>
+
+  <div>
+    <article id="contacts">
+      <header><h2>Contacts</h2></header>
+      {% if linked_contacts %}
+      <ul class="plain">
+        {% for p in linked_contacts %}
+        <li class="row-between">
+          <span><a href="/contacts/{{ p.id }}">{{ p.name }}</a>{% if p.link_role %} <small class="muted">· {{ p.link_role }}</small>{% endif %}{% if p.title %}<br><small class="muted">{{ p.title }}</small>{% endif %}</span>
+          <form method="post" action="{{ here }}/contacts/{{ p.id }}/delete" class="inline"><button class="link danger" title="Unlink">✕</button></form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <details>
+        <summary>Link a contact</summary>
+        <form method="post" action="{{ here }}/contacts">
+          <label>Existing contact
+            <select name="contact_id">
+              <option value="">—</option>
+              {% for p in all_contacts %}<option value="{{ p.id }}">{{ p.name }}{% if p.company_name %} ({{ p.company_name }}){% endif %}</option>{% endfor %}
+            </select>
+          </label>
+          <label>…or new contact name <input name="new_name"></label>
+          <label>Their role <input name="role" placeholder="Recruiter, hiring manager, referral…"></label>
+          <button type="submit" class="secondary">Link</button>
+        </form>
+      </details>
+    </article>
+
+    <article id="files">
+      <header><h2>Files</h2></header>
+      {% if files %}
+      <ul class="plain">
+        {% for f in files %}
+        <li class="row-between">
+          <span>
+            <a href="/attachments/{{ f.id }}" target="_blank">{{ f.original_name }}</a><br>
+            <small class="muted">{{ ATTACHMENT_KINDS[f.kind] }} · {{ (f.size / 1024)|round(1) }} KB · {{ f.added_at[:10] }}</small>
+          </span>
+          <span>
+            <a href="/attachments/{{ f.id }}?download=true" title="Download">⤓</a>
+            <form method="post" action="/attachments/{{ f.id }}/delete" class="inline" onsubmit="return confirm('Delete this file?')"><button class="link danger" title="Delete">✕</button></form>
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <form method="post" action="{{ here }}/attachments" enctype="multipart/form-data">
+        <select name="kind" aria-label="File type">
+          {% for k, label in ATTACHMENT_KINDS.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
+        </select>
+        <input type="file" name="file" required>
+        <button type="submit" class="secondary">Upload</button>
+      </form>
+    </article>
+
+    <article>
+      <header><h2>History</h2></header>
+      <ul class="plain">
+        {% for h in history %}
+        <li><small>{{ h.changed_at[:16]|replace('T', ' ') }}</small> — {% if h.from_status %}{{ STATUS_LABELS[h.from_status] }} → {% endif %}{{ status_badge(h.to_status) }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <form method="post" action="{{ here }}/delete" onsubmit="return confirm('Delete this application and its files? This cannot be undone.')">
+      <button class="outline danger-btn">Delete application</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

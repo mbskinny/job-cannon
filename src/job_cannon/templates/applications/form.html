@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if app else 'New' }} application{% endblock %}
+{% block content %}
+<h1>{{ 'Edit application' if app else 'New application' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/applications/%d' % app.id if app else '/applications' }}">
+  <div class="grid">
+    <label>Company *
+      <input name="company" list="companies" required value="{{ values.company or '' }}" autofocus>
+      <datalist id="companies">{% for c in companies %}<option value="{{ c.name }}">{% endfor %}</datalist>
+    </label>
+    <label>Role *
+      <input name="role" required value="{{ values.role or '' }}">
+    </label>
+  </div>
+  <div class="grid">
+    <label>Status
+      <select name="status">
+        {% for s in STATUSES %}<option value="{{ s }}" {% if s == (values.status or 'wishlist') %}selected{% endif %}>{{ STATUS_LABELS[s] }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Applied on
+      <input type="date" name="applied_on" value="{{ values.applied_on or '' }}">
+    </label>
+    <label>Source
+      <input name="source" placeholder="LinkedIn, referral, company site…" value="{{ values.source or '' }}">
+    </label>
+  </div>
+  <label>Posting URL
+    <input type="url" name="posting_url" placeholder="https://" value="{{ values.posting_url or '' }}">
+  </label>
+  <div class="grid">
+    <label>Location
+      <input name="location" placeholder="Remote, Boston, hybrid…" value="{{ values.location or '' }}">
+    </label>
+    <label>Salary range
+      <input name="salary_range" value="{{ values.salary_range or '' }}">
+    </label>
+  </div>
+  <div class="grid">
+    <label>Next action
+      <input name="next_action" placeholder="Send thank-you note, follow up with recruiter…" value="{{ values.next_action or '' }}">
+    </label>
+    <label>Due
+      <input type="date" name="next_action_due" value="{{ values.next_action_due or '' }}">
+    </label>
+  </div>
+  <label>Notes
+    <textarea name="notes" rows="6">{{ values.notes or '' }}</textarea>
+  </label>
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="{{ '/applications/%d' % app.id if app else '/applications' }}" role="button" class="secondary outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}

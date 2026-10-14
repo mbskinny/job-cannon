@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status_badge, interaction_list %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="pipeline">
+  {% for s in active %}
+  <a href="/applications?status={{ s }}" class="stat status-{{ s }}">
+    <span class="stat-value">{{ counts[s] }}</span>
+    <span class="stat-label">{{ STATUS_LABELS[s] }}</span>
+  </a>
+  {% endfor %}
+  <a href="/applications?status=rejected" class="stat stat-closed">
+    <span class="stat-value">{{ counts['rejected'] + counts['withdrawn'] }}</span>
+    <span class="stat-label">Closed</span>
+  </a>
+</section>
+
+<div class="dash-grid">
+  <article>
+    <header><h2>Follow-ups</h2></header>
+    {% set groups = [('overdue', 'Overdue'), ('today', 'Today'), ('upcoming', 'Next 7 days')] %}
+    {% set any_items = follow_ups.overdue or follow_ups.today or follow_ups.upcoming %}
+    {% if not any_items %}
+      <p class="muted">Nothing due. Set a <em>next action</em> on an application or a follow-up date on an interaction and it will show up here.</p>
+    {% endif %}
+    {% for key, label in groups if follow_ups[key] %}
+      <h3 class="group-{{ key }}">{{ label }}</h3>
+      <ul class="followups">
+        {% for f in follow_ups[key] %}
+        <li>
+          <span class="due {{ key }}">{{ f.due }}</span>
+          <div>
+            <div>{{ f.what }}</div>
+            <small>
+              {% if f.application_id %}<a href="/applications/{{ f.application_id }}">{{ f.label }}</a>
+              {% elif f.contact_id %}<a href="/contacts/{{ f.contact_id }}">{{ f.label }}</a>
+              {% else %}{{ f.label }}{% endif %}
+            </small>
+          </div>
+          {% if f.source == 'interaction' %}
+          <form method="post" action="/interactions/{{ f.interaction_id }}/done" class="inline">
+            <input type="hidden" name="next" value="/"><button class="link">Done</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </article>
+
+  <div>
+    <article>
+      <header><h2>Recent status changes</h2></header>
+      {% if status_changes %}
+      <ul class="plain">
+        {% for h in status_changes %}
+        <li>
+          <a href="/applications/{{ h.application_id }}">{{ h.company_name }} — {{ h.role }}</a><br>
+          <small>{% if h.from_status %}{{ STATUS_LABELS[h.from_status] }} → {% endif %}{{ status_badge(h.to_status) }} <span class="muted">{{ h.changed_at[:10] }}</span></small>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">No applications yet. <a href="/applications/new">Add your first one</a>.</p>{% endif %}
+    </article>
+    <article>
+      <header><h2>Recent interactions</h2></header>
+      {{ interaction_list(recent_interactions, '/', show_app=True) }}
+    </article>
+  </div>
+</div>
+{% endblock %}

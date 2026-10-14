@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status_badge, interaction_form, interaction_list %}
+{% block title %}{{ contact.name }}{% endblock %}
+{% block content %}
+{% set here = '/contacts/%d' % contact.id %}
+<div class="page-head">
+  <hgroup>
+    <h1>{{ contact.name }}</h1>
+    <p>{{ contact.title }}{% if contact.title and contact.company_name %} · {% endif %}{{ contact.company_name or '' }}</p>
+  </hgroup>
+  <a href="{{ here }}/edit" role="button" class="secondary outline">Edit</a>
+</div>
+<div class="detail-grid">
+  <div>
+    <article>
+      <dl class="facts">
+        {% if contact.email %}<dt>Email</dt><dd><a href="mailto:{{ contact.email }}">{{ contact.email }}</a></dd>{% endif %}
+        {% if contact.phone %}<dt>Phone</dt><dd>{{ contact.phone }}</dd>{% endif %}
+        {% if contact.linkedin %}<dt>LinkedIn</dt><dd><a href="{{ contact.linkedin|http_only }}" target="_blank" rel="noopener noreferrer">{{ contact.linkedin|truncate(50) }}</a></dd>{% endif %}
+      </dl>
+      {% if contact.notes %}<div class="notes">{{ contact.notes }}</div>{% endif %}
+    </article>
+    <article id="interactions">
+      <header><h2>Interactions</h2></header>
+      {{ interaction_form(here + '#interactions', now_local, contact_id=contact.id) }}
+      <hr>
+      {{ interaction_list(interactions, here + '#interactions', show_app=True) }}
+    </article>
+  </div>
+  <div>
+    <article>
+      <header><h2>Applications</h2></header>
+      {% if linked_apps %}
+      <ul class="plain">
+        {% for a in linked_apps %}
+        <li><a href="/applications/{{ a.id }}">{{ a.company_name }} — {{ a.role }}</a> {{ status_badge(a.status) }}{% if a.link_role %}<br><small class="muted">{{ a.link_role }}</small>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">Not linked to any application. Link contacts from an application page.</p>{% endif %}
+    </article>
+    <form method="post" action="{{ here }}/delete" onsubmit="return confirm('Delete this contact?')">
+      <button class="outline danger-btn">Delete contact</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

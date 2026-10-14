@@ -1,0 +1,74 @@
+{% macro status_badge(status) -%}
+<span class="badge status-{{ status }}">{{ STATUS_LABELS[status] }}</span>
+{%- endmacro %}
+
+{% macro due(date_s, today) -%}
+{% if date_s %}<span class="due {% if date_s < today %}overdue{% elif date_s == today %}today{% endif %}">{{ date_s }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro interaction_form(next, now_local, application_id=None, contact_id=None, contacts=None) -%}
+<form method="post" action="/interactions" class="interaction-form">
+  <input type="hidden" name="next" value="{{ next }}">
+  {% if application_id %}<input type="hidden" name="application_id" value="{{ application_id }}">{% endif %}
+  {% if contact_id %}<input type="hidden" name="contact_id" value="{{ contact_id }}">{% endif %}
+  <div class="grid">
+    <label>Type
+      <select name="kind">
+        {% for k in INTERACTION_KINDS %}<option value="{{ k }}">{{ k|capitalize }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>When
+      <input type="datetime-local" name="occurred_at" value="{{ now_local }}">
+    </label>
+    {% if contacts is not none %}
+    <label>With
+      <select name="contact_id">
+        <option value="">—</option>
+        {% for p in contacts %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <label>Follow up by
+      <input type="date" name="follow_up_due">
+    </label>
+  </div>
+  <label>Summary
+    <textarea name="summary" rows="2" placeholder="What happened?"></textarea>
+  </label>
+  <button type="submit" class="secondary">Log interaction</button>
+</form>
+{%- endmacro %}
+
+{% macro interaction_list(items, next, show_app=False) -%}
+{% if items %}
+<ul class="timeline">
+  {% for i in items %}
+  <li>
+    <div class="timeline-head">
+      <span class="badge kind">{{ i.kind }}</span>
+      <time>{{ i.occurred_at|replace('T', ' ') }}</time>
+      {% if i.contact_name %}<span>with <a href="/contacts/{{ i.contact_id }}">{{ i.contact_name }}</a></span>{% endif %}
+      {% if show_app and i.application_id %}<span>· <a href="/applications/{{ i.application_id }}">{{ i.company_name }} — {{ i.application_role }}</a></span>{% endif %}
+    </div>
+    {% if i.summary %}<p>{{ i.summary }}</p>{% endif %}
+    <div class="timeline-actions">
+      {% if i.follow_up_due %}
+        {% if i.follow_up_done %}<small class="muted">Followed up ✓ ({{ i.follow_up_due }})</small>
+        {% else %}
+        <small>Follow up by <strong>{{ i.follow_up_due }}</strong></small>
+        <form method="post" action="/interactions/{{ i.id }}/done" class="inline">
+          <input type="hidden" name="next" value="{{ next }}"><button class="link">Mark done</button>
+        </form>
+        {% endif %}
+      {% endif %}
+      <form method="post" action="/interactions/{{ i.id }}/delete" class="inline" onsubmit="return confirm('Delete this interaction?')">
+        <input type="hidden" name="next" value="{{ next }}"><button class="link danger">Delete</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">Nothing logged yet.</p>
+{% endif %}
+{%- endmacro %}

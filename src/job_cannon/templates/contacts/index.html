@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Contacts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Contacts</h1>
+  <a href="/contacts/new" role="button">+ New contact</a>
+</div>
+<form class="filters" method="get" action="/contacts">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search name, company, title…" aria-label="Search">
+  <button type="submit" class="secondary">Search</button>
+</form>
+{% if rows %}
+<div class="table-wrap">
+<table class="striped">
+  <thead><tr><th>Name</th><th>Company</th><th>Title</th><th>Email</th></tr></thead>
+  <tbody>
+    {% for p in rows %}
+    <tr>
+      <td><a href="/contacts/{{ p.id }}">{{ p.name }}</a></td>
+      <td>{{ p.company_name or '' }}</td>
+      <td>{{ p.title }}</td>
+      <td>{% if p.email %}<a href="mailto:{{ p.email }}">{{ p.email }}</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">No contacts yet.</p>
+{% endif %}
+{% endblock %}

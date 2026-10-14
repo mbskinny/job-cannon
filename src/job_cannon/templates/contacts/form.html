@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if contact else 'New' }} contact{% endblock %}
+{% block content %}
+<h1>{{ 'Edit contact' if contact else 'New contact' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/contacts/%d' % contact.id if contact else '/contacts' }}">
+  <div class="grid">
+    <label>Name * <input name="name" required value="{{ values.name or '' }}" autofocus></label>
+    <label>Company
+      <input name="company" list="companies" value="{{ values.company or '' }}">
+      <datalist id="companies">{% for c in companies %}<option value="{{ c.name }}">{% endfor %}</datalist>
+    </label>
+  </div>
+  <div class="grid">
+    <label>Title <input name="title" value="{{ values.title or '' }}"></label>
+    <label>Email <input type="email" name="email" value="{{ values.email or '' }}"></label>
+  </div>
+  <div class="grid">
+    <label>Phone <input name="phone" value="{{ values.phone or '' }}"></label>
+    <label>LinkedIn <input type="url" name="linkedin" placeholder="https://" value="{{ values.linkedin or '' }}"></label>
+  </div>
+  <label>Notes <textarea name="notes" rows="5">{{ values.notes or '' }}</textarea></label>
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="{{ '/contacts/%d' % contact.id if contact else '/contacts' }}" role="button" class="secondary outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}
