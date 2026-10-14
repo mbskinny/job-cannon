@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Job Cannon">
+  <rect x="14" y="102" width="92" height="4" rx="2" fill="#1B2A4A"/>
+  <g transform="rotate(-22 52 72)">
+    <path d="M34 60 L93 63 L93 79 L34 82 Z" fill="#1B2A4A"/>
+    <rect x="89" y="59" width="8" height="24" rx="2" fill="#C8963E"/>
+    <rect x="60" y="61" width="4" height="20" fill="#C8963E"/>
+    <circle cx="32" cy="71" r="9" fill="#1B2A4A"/>
+    <circle cx="22" cy="71" r="4.5" fill="#C8963E"/>
+  </g>
+  <circle cx="50" cy="84" r="17" fill="#F6F1E7" stroke="#1B2A4A" stroke-width="5"/>
+  <path d="M50 70 V98 M36 84 H64 M40.1 74.1 L59.9 93.9 M59.9 74.1 L40.1 93.9" stroke="#1B2A4A" stroke-width="2.5"/>
+  <circle cx="50" cy="84" r="4.5" fill="#C8963E"/>
+  <circle cx="106" cy="47" r="7" fill="#C8963E"/>
+</svg>

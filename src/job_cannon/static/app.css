@@ -1,4 +1,11 @@
 /* Job Cannon — small layer on top of Pico */
+@font-face {
+  font-family: "Rokkitt";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/static/fonts/rokkitt-800-latin.woff2") format("woff2");
+}
 :root {
   --jc-wishlist: #8b8fa3;
   --jc-applied: #3b82f6;
@@ -9,11 +16,23 @@
   --jc-withdrawn: #6b7280;
   --jc-muted: var(--pico-muted-color);
   --pico-font-size: 95%;
+  --jc-logo-ink: #1B2A4A;
+  --jc-logo-brass: #C8963E;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --jc-logo-ink: #E9E2D2; --jc-logo-brass: #D9A853; }
 }
 
 .site-header { border-bottom: 1px solid var(--pico-muted-border-color); margin-bottom: 1.5rem; }
 .site-header nav a[aria-current="page"] { font-weight: 600; text-decoration: underline; text-underline-offset: 0.35em; }
-.brand { color: var(--pico-color); }
+.brand { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--jc-logo-ink); text-decoration: none; }
+.brand:hover { text-decoration: none; }
+.wordmark { font-family: "Rokkitt", Georgia, serif; font-weight: 800; font-size: 1.6rem; line-height: 1; letter-spacing: -0.01em; }
+.logo-mark { width: 2.4rem; height: 2.4rem; flex: none; }
+.logo-mark .ink { fill: var(--jc-logo-ink); }
+.logo-mark .brass { fill: var(--jc-logo-brass); }
+.logo-mark .wheel { fill: var(--pico-background-color); stroke: var(--jc-logo-ink); }
+.logo-mark .spokes { stroke: var(--jc-logo-ink); }
 .nav-cta { padding: 0.35rem 0.9rem; }
 
 h1 { margin-bottom: 0.5rem; }

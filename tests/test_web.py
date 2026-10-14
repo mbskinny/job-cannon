@@ -150,3 +150,12 @@ def test_backup_and_portability(client, cfg, tmp_path):
     shutil.copytree(cfg.data_dir, copied)
     with TestClient(create_app(Config(copied))) as other:
         assert other.get(f"/applications/{app_id}").status_code == 200
+
+
+def test_branding_assets_served(client):
+    page = client.get("/").text
+    assert 'href="/static/favicon.svg"' in page and 'class="logo-mark"' in page
+    for path, ctype in [("/static/favicon.svg", "image/svg+xml"), ("/static/logo.svg", "image/svg+xml"),
+                        ("/static/fonts/rokkitt-800-latin.woff2", "font/woff2")]:
+        resp = client.get(path)
+        assert resp.status_code == 200 and resp.headers["content-type"].startswith(ctype), path
