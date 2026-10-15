@@ -122,3 +122,39 @@ def start_draft(conn, app: sqlite3.Row, template_id: int) -> None:
 def delete_draft(conn, app_id: int) -> None:
     with conn:
         conn.execute("DELETE FROM cover_letters WHERE application_id = ?", (app_id,))
+
+
+# --- letterhead (single row of PDF settings) ---
+
+LETTERHEAD_FIELDS = ["name", "location", "email", "phone", "website", "accent"]
+DEFAULT_ACCENT = "#184078"
+_HEX_RE = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def get_letterhead(conn) -> dict:
+    row = conn.execute("SELECT * FROM letterhead WHERE id = 1").fetchone()
+    if row is None:
+        return {**{k: "" for k in LETTERHEAD_FIELDS}, "accent": DEFAULT_ACCENT}
+    return {k: row[k] for k in LETTERHEAD_FIELDS}
+
+
+def clean_letterhead(data: dict) -> dict:
+    out = {k: (data.get(k) or "").strip() for k in LETTERHEAD_FIELDS}
+    out["accent"] = out["accent"] or DEFAULT_ACCENT
+    if not _HEX_RE.fullmatch(out["accent"]):
+        raise ValueError("accent colour must look like #1a2b3c")
+    out["accent"] = out["accent"].lower()
+    return out
+
+
+def save_letterhead(conn, data: dict) -> None:
+    values = clean_letterhead(data)
+    cols = ", ".join(LETTERHEAD_FIELDS)
+    marks = ", ".join("?" for _ in LETTERHEAD_FIELDS)
+    updates = ", ".join(f"{k} = excluded.{k}" for k in [*LETTERHEAD_FIELDS, "updated_at"])
+    with conn:
+        conn.execute(
+            f"INSERT INTO letterhead (id, {cols}, updated_at) VALUES (1, {marks}, ?)"
+            f" ON CONFLICT (id) DO UPDATE SET {updates}",
+            [*values.values(), now()],
+        )

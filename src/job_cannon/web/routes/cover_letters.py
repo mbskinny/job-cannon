@@ -1,6 +1,7 @@
 import io
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import Response
 
 from job_cannon import pdf
 from job_cannon.repo import applications, attachments, cover_letters
@@ -17,6 +18,19 @@ def _template_or_404(request: Request, template_id: int):
     return row
 
 
+SAMPLE_LETTER = (
+    "Dear Hiring Team,\n\nThis is a preview of how your cover letters will look. "
+    "Create a base letter to see one of your own here.\n\nBest regards,\nYour name"
+)
+
+
+def _pdf_response(content: bytes) -> Response:
+    return Response(content, media_type="application/pdf", headers={
+        "Content-Disposition": 'inline; filename="cover-letter-preview.pdf"',
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
 def _app_or_404(request: Request, app_id: int):
     row = applications.get(conn(request), app_id)
     if row is None:
@@ -26,11 +40,41 @@ def _app_or_404(request: Request, app_id: int):
 
 # --- base letters ---
 
-@router.get("/cover-letters")
-async def index(request: Request):
-    rows = cover_letters.list_templates(conn(request))
+def _index_page(request: Request, status_code: int = 200, **extra):
+    c = conn(request)
+    rows = cover_letters.list_templates(c)
     slots = {r["id"]: cover_letters.unfilled(r["body"]) for r in rows}
-    return render(request, "cover_letters/index.html", rows=rows, slots=slots)
+    extra.setdefault("letterhead", cover_letters.get_letterhead(c))
+    return render(request, "cover_letters/index.html", status_code=status_code, rows=rows, slots=slots, **extra)
+
+
+@router.get("/cover-letters")
+async def index(request: Request, saved: bool = False):
+    return _index_page(request, saved=saved)
+
+
+# Declared before /cover-letters/{template_id} so "letterhead" isn't parsed as an id.
+@router.post("/cover-letters/letterhead")
+async def save_letterhead(request: Request):
+    form = await request.form()
+    values = {k: form.get(k, "") for k in cover_letters.LETTERHEAD_FIELDS}
+    try:
+        cover_letters.save_letterhead(conn(request), values)
+    except ValueError as exc:
+        return _index_page(request, status_code=422, letterhead=values, letterhead_error=str(exc))
+    return redirect("/cover-letters?saved=1#letterhead")
+
+
+@router.post("/cover-letters/letterhead/preview")
+async def preview_letterhead(request: Request):
+    """Render the (unsaved) form values with the first base letter, or a sample."""
+    form = await request.form()
+    try:
+        values = cover_letters.clean_letterhead({k: form.get(k, "") for k in cover_letters.LETTERHEAD_FIELDS})
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    templates = cover_letters.list_templates(conn(request))
+    return _pdf_response(pdf.render_letter(templates[0]["body"] if templates else SAMPLE_LETTER, values))
 
 
 @router.get("/cover-letters/new")
@@ -122,6 +166,7 @@ async def attach(request: Request, app_id: int):
             request, app, status_code=422,
             letter_error="Fill these placeholders first: " + ", ".join(missing),
         )
+    letter = pdf.render_letter(draft["body"], cover_letters.get_letterhead(c))
     name = f"Cover letter - {app['company_name']} - {app['role']}.pdf".replace("/", "-")
     attachments.save(
         c,
@@ -129,10 +174,25 @@ async def attach(request: Request, app_id: int):
         application_id=app_id,
         kind="cover_letter",
         original_name=name,
-        stream=io.BytesIO(pdf.render_letter(draft["body"])),
+        stream=io.BytesIO(letter),
         mime="application/pdf",
     )
     return redirect(f"/applications/{app_id}#files")
+
+
+@router.post("/applications/{app_id}/cover-letter/preview")
+async def preview_draft(request: Request, app_id: int):
+    """Save the textarea and show the PDF without attaching it (placeholders allowed)."""
+    _app_or_404(request, app_id)
+    form = await request.form()
+    c = conn(request)
+    body = form.get("body")
+    if body is not None:
+        cover_letters.save_draft(c, app_id, body)
+    draft = cover_letters.get_draft(c, app_id)
+    if draft is None:
+        raise HTTPException(404, "No draft to preview")
+    return _pdf_response(pdf.render_letter(draft["body"], cover_letters.get_letterhead(c)))
 
 
 @router.post("/applications/{app_id}/cover-letter/delete")

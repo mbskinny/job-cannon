@@ -193,3 +193,30 @@ def test_cover_letter_template_draft_and_attach(client, cfg):
     assert "Start draft" in client.get(f"/applications/{app_id}").text
     client.post(f"/cover-letters/{tpl_id}/delete")
     assert "No base letters yet" in client.get("/cover-letters").text
+
+
+def test_letterhead_settings_and_previews(client):
+    assert "Letterhead" in client.get("/cover-letters").text
+    resp = client.post("/cover-letters/letterhead", data={"name": "Ada", "accent": "#123456"}, follow_redirects=False)
+    assert resp.status_code == 303
+    page = client.get("/cover-letters?saved=1").text
+    assert 'value="Ada"' in page and "#123456" in page and "Saved." in page
+    resp = client.post("/cover-letters/letterhead", data={"name": "Ada", "accent": "blue"})
+    assert resp.status_code == 422 and "accent colour" in resp.text
+
+    resp = client.post("/cover-letters/letterhead/preview", data={"name": "Ada", "accent": "#123456"})
+    assert resp.headers["content-type"] == "application/pdf" and resp.content.startswith(b"%PDF")
+
+    app_id = _create_app(client)
+    assert client.post(f"/applications/{app_id}/cover-letter/preview").status_code == 404
+    resp = client.post(f"/applications/{app_id}/cover-letter/save", data={"body": "Hi {{x}}"})
+    resp = client.post(f"/applications/{app_id}/cover-letter/preview", data={"body": "Dear {{who}},"})
+    assert resp.content.startswith(b"%PDF") and resp.headers["x-content-type-options"] == "nosniff"
+    page = client.get(f"/applications/{app_id}").text
+    assert "Dear {{who}}," in page and "No letterhead yet" not in page  # Ada was saved above
+
+
+def test_draft_hints_when_letterhead_missing(client):
+    app_id = _create_app(client)
+    client.post(f"/applications/{app_id}/cover-letter/save", data={"body": "Hi"})
+    assert "No letterhead yet" in client.get(f"/applications/{app_id}").text

@@ -160,3 +160,28 @@ def test_draft_upsert_cascade_and_template_delete(conn):
 
     applications.delete(conn, app_id)
     assert cover_letters.get_draft(conn, app_id) is None
+
+
+def test_letterhead_defaults_save_and_validation(conn):
+    assert cover_letters.get_letterhead(conn)["name"] == ""
+    assert cover_letters.get_letterhead(conn)["accent"] == cover_letters.DEFAULT_ACCENT
+    cover_letters.save_letterhead(conn, {"name": " Ada ", "email": "a@b.c", "accent": "#AABBCC"})
+    cover_letters.save_letterhead(conn, {"name": "Ada L", "accent": ""})
+    lh = cover_letters.get_letterhead(conn)
+    assert lh["name"] == "Ada L" and lh["email"] == "" and lh["accent"] == cover_letters.DEFAULT_ACCENT
+    with pytest.raises(ValueError):
+        cover_letters.save_letterhead(conn, {"accent": "red"})
+
+
+def test_smarten_quotes_and_dashes():
+    from job_cannon.pdf import smarten
+    assert smarten("I'm \"here\" -- now") == "I’m “here” – now"
+    assert smarten("teams' work - done") == "teams’ work – done"
+
+
+def test_render_letter_with_full_letterhead():
+    from job_cannon.pdf import render_letter
+    lh = {"name": "Ada", "location": "Firenze", "email": "a@b.c", "phone": "+39 1",
+          "website": "https://example.com/", "accent": "#336699"}
+    assert render_letter("15 October 2026\n\nDear X,\n\nè €\n\nBest,\nAda", lh).startswith(b"%PDF")
+    assert render_letter("No date here").startswith(b"%PDF")

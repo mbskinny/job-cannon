@@ -68,6 +68,7 @@ def detail_page(request: Request, app, status_code: int = 200, **extra):
         draft=draft,
         draft_unfilled=cover_letters.unfilled(draft["body"]) if draft else [],
         letter_templates=cover_letters.list_templates(c),
+        has_letterhead=bool(cover_letters.get_letterhead(c)["name"]),
         **extra,
     )
 

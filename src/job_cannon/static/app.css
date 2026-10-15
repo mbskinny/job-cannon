@@ -126,3 +126,4 @@ textarea.letter { font-family: Georgia, "DejaVu Serif", serif; line-height: 1.5;
 .start-draft { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
 .start-draft select { margin-bottom: 0; }
 .start-draft button { width: auto; margin-bottom: 0; }
+.saved { color: var(--jc-offer); font-weight: 600; }
