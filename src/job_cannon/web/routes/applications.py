@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 
-from job_cannon.repo import applications, attachments, contacts, interactions
+from job_cannon.repo import applications, attachments, contacts, cover_letters, interactions
 from job_cannon.web.app import config, conn, redirect, render
 
 router = APIRouter(prefix="/applications")
@@ -49,13 +49,15 @@ async def create(request: Request):
     return redirect(f"/applications/{app_id}")
 
 
-@router.get("/{app_id}")
-async def detail(request: Request, app_id: int):
+def detail_page(request: Request, app, status_code: int = 200, **extra):
+    """Render the application page; also used by other routes to re-render with an error."""
     c = conn(request)
-    app = _get_or_404(request, app_id)
+    app_id = app["id"]
+    draft = cover_letters.get_draft(c, app_id)
     return render(
         request,
         "applications/detail.html",
+        status_code=status_code,
         app=app,
         history=applications.history(c, app_id),
         linked_contacts=contacts.for_application(c, app_id),
@@ -63,7 +65,16 @@ async def detail(request: Request, app_id: int):
         interactions=interactions.for_application(c, app_id),
         files=attachments.for_application(c, app_id),
         now_local=interactions.local_now(),
+        draft=draft,
+        draft_unfilled=cover_letters.unfilled(draft["body"]) if draft else [],
+        letter_templates=cover_letters.list_templates(c),
+        **extra,
     )
+
+
+@router.get("/{app_id}")
+async def detail(request: Request, app_id: int):
+    return detail_page(request, _get_or_404(request, app_id))
 
 
 @router.get("/{app_id}/edit")

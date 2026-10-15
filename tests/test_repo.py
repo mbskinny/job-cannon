@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 
 from job_cannon import db
-from job_cannon.repo import applications, attachments, contacts, dashboard, interactions
+from job_cannon.repo import applications, attachments, contacts, cover_letters, dashboard, interactions
 
 
 def test_migrate_is_idempotent(conn):
@@ -118,3 +118,45 @@ def test_attachment_round_trip_and_cascade_cleanup(conn, cfg):
     attachments.remove_files(cfg.files_dir, stored)
     assert not path.exists()
     assert attachments.get(conn, att) is None
+
+
+def test_placeholders_parse_names_and_multiline_instructions():
+    body = "Hi {{recipient}},\n{{why_company: two sentences\n  on the product}} and {{ role }}."
+    assert cover_letters.placeholders(body) == [
+        ("recipient", ""), ("why_company", "two sentences on the product"), ("role", ""),
+    ]
+    assert cover_letters.unfilled(body + "{{recipient}}") == ["recipient", "why_company", "role"]
+
+
+def test_fill_builtins_leaves_custom_placeholders(conn):
+    app = applications.get(conn, applications.create(conn, "Acme", {"role": "Engineer"}))
+    out = cover_letters.fill_builtins(
+        "{{date}}: {{role}} at {{company}}. {{why: say why}}", app, today=date(2026, 10, 5)
+    )
+    assert out == "5 October 2026: Engineer at Acme. {{why: say why}}"
+
+
+def test_template_names_unique_and_required(conn):
+    cover_letters.create_template(conn, "Full-stack", "x")
+    with pytest.raises(ValueError):
+        cover_letters.create_template(conn, "full-stack", "y")
+    with pytest.raises(ValueError):
+        cover_letters.create_template(conn, " ", "y")
+
+
+def test_draft_upsert_cascade_and_template_delete(conn):
+    app_id = applications.create(conn, "Acme", {"role": "Engineer"})
+    tpl = cover_letters.create_template(conn, "Base", "Dear {{company}},\r\n{{why}}")
+    cover_letters.start_draft(conn, applications.get(conn, app_id), tpl)
+    draft = cover_letters.get_draft(conn, app_id)
+    assert draft["body"] == "Dear Acme,\n{{why}}" and draft["template_name"] == "Base"
+
+    cover_letters.save_draft(conn, app_id, "Dear Acme,\nBecause.")
+    draft = cover_letters.get_draft(conn, app_id)
+    assert draft["body"] == "Dear Acme,\nBecause." and draft["template_id"] == tpl
+
+    cover_letters.delete_template(conn, tpl)
+    assert cover_letters.get_draft(conn, app_id)["template_id"] is None
+
+    applications.delete(conn, app_id)
+    assert cover_letters.get_draft(conn, app_id) is None

@@ -17,7 +17,8 @@ def _create_app(client, **fields):
 
 
 def test_pages_render_empty(client):
-    for path in ["/", "/board", "/applications", "/applications/new", "/contacts", "/contacts/new"]:
+    for path in ["/", "/board", "/applications", "/applications/new", "/contacts", "/contacts/new",
+                 "/cover-letters", "/cover-letters/new"]:
         assert client.get(path).status_code == 200, path
 
 
@@ -159,3 +160,36 @@ def test_branding_assets_served(client):
                         ("/static/fonts/rokkitt-800-latin.woff2", "font/woff2")]:
         resp = client.get(path)
         assert resp.status_code == 200 and resp.headers["content-type"].startswith(ctype), path
+
+
+def test_cover_letter_template_draft_and_attach(client, cfg):
+    resp = client.post("/cover-letters", data={
+        "name": "Base", "body": "Dear {{company}} team,\n\nI want the {{role}} job. {{why: why them}}",
+    }, follow_redirects=False)
+    assert resp.status_code == 303
+    index = client.get("/cover-letters").text
+    assert "Base" in index and "why" in index
+    tpl_id = re.search(r'/cover-letters/(\d+)"', index).group(1)
+    assert client.post("/cover-letters", data={"name": "base", "body": ""}).status_code == 422
+
+    app_id = _create_app(client)
+    client.post(f"/applications/{app_id}/cover-letter", data={"template_id": tpl_id})
+    page = client.get(f"/applications/{app_id}").text
+    assert "Dear Acme team" in page and "Engineer job" in page and "Unfilled" in page
+
+    resp = client.post(f"/applications/{app_id}/cover-letter/attach")
+    assert resp.status_code == 422 and "Fill these placeholders first: why" in resp.text
+
+    body = "Dear Acme team,\n\nI want the Engineer job. Perché il caffè costa €2.\n\nBest,\nMe"
+    resp = client.post(f"/applications/{app_id}/cover-letter/attach", data={"body": body}, follow_redirects=False)
+    assert resp.status_code == 303 and resp.headers["location"].endswith("#files")
+    page = client.get(f"/applications/{app_id}").text
+    assert "Cover letter - Acme - Engineer.pdf" in page and "Unfilled" not in page
+    att_id = re.search(r'/attachments/(\d+)"', page).group(1)
+    pdf = client.get(f"/attachments/{att_id}")
+    assert pdf.content.startswith(b"%PDF") and pdf.headers["content-type"] == "application/pdf"
+
+    client.post(f"/applications/{app_id}/cover-letter/delete")
+    assert "Start draft" in client.get(f"/applications/{app_id}").text
+    client.post(f"/cover-letters/{tpl_id}/delete")
+    assert "No base letters yet" in client.get("/cover-letters").text

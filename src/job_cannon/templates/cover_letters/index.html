@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Cover letters{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Cover letters</h1>
+    <p>Base letters with placeholders, tailored per application.</p>
+  </hgroup>
+  <a href="/cover-letters/new" role="button">+ New base letter</a>
+</div>
+{% if rows %}
+<div class="table-wrap">
+<table class="striped">
+  <thead><tr><th>Name</th><th>Placeholders</th><th>Updated</th></tr></thead>
+  <tbody>
+    {% for t in rows %}
+    <tr>
+      <td><a href="/cover-letters/{{ t.id }}">{{ t.name }}</a></td>
+      <td>{% for s in slots[t.id] %}<code>{{ s }}</code> {% else %}<span class="muted">none</span>{% endfor %}</td>
+      <td>{{ t.updated_at[:10] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">No base letters yet. Create one, then start a draft from any application's page.</p>
+{% endif %}
+{% endblock %}

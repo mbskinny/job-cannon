@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if template else 'New' }} base letter{% endblock %}
+{% block content %}
+<h1>{{ 'Edit base letter' if template else 'New base letter' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/cover-letters/%d' % template.id if template else '/cover-letters' }}">
+  <label>Name * <input name="name" required value="{{ values.name or '' }}" placeholder="Full-stack, Data viz, Italian…" {% if not template %}autofocus{% endif %}></label>
+  <label>Letter
+    <textarea name="body" rows="20" class="letter">{{ values.body or '' }}</textarea>
+    <small>
+      Placeholders: <code>{{ '{{name}}' }}</code> or <code>{{ '{{name: what to write here}}' }}</code>.
+      <code>{{ '{{company}}' }}</code>, <code>{{ '{{role}}' }}</code> and <code>{{ '{{date}}' }}</code> are filled in automatically when a draft starts.
+      Blank lines separate paragraphs.
+    </small>
+  </label>
+  {% if slots %}
+  <details open>
+    <summary>Placeholders found ({{ slots|length }})</summary>
+    <ul>
+      {% for name, instruction in slots %}<li><code>{{ name }}</code>{% if instruction %}: {{ instruction }}{% endif %}</li>{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="/cover-letters" role="button" class="secondary outline">Back</a>
+  </div>
+</form>
+{% if template %}
+<form method="post" action="/cover-letters/{{ template.id }}/delete" onsubmit="return confirm('Delete this base letter? Drafts made from it are kept.')">
+  <button class="outline danger-btn">Delete base letter</button>
+</form>
+{% endif %}
+{% endblock %}

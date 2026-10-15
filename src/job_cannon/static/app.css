@@ -119,3 +119,10 @@ button.link.danger, .danger-btn { color: var(--jc-rejected); border-color: var(-
 .card-ghost { opacity: 0.4; }
 .add-card { display: block; margin-top: 0.5rem; padding: 0.3rem; font-size: 0.85rem; text-align: center; color: var(--jc-muted); text-decoration: none; }
 .add-card:hover { color: var(--pico-primary); }
+
+/* Cover letters */
+textarea.letter { font-family: Georgia, "DejaVu Serif", serif; line-height: 1.5; }
+.warn { color: var(--jc-interviewing); font-weight: 600; }
+.start-draft { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.start-draft select { margin-bottom: 0; }
+.start-draft button { width: auto; margin-bottom: 0; }

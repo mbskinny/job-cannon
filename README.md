@@ -2,6 +2,9 @@
 
 A local job-search manager: applications, a kanban board, contacts, interaction
 log with follow-ups, and attached files (resumes, cover letters, postings).
+Cover letters can start from named base letters with `{{placeholders}}`. Fill
+them in on the application page (or have Claude Code do it with the
+`tailor-cover-letter` skill), then attach the result as a PDF.
 
 It runs on your own machine and opens in your browser. **All of your data lives
 in one folder**, so moving to another computer means copying that folder.

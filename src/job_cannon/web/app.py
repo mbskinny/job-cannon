@@ -93,10 +93,10 @@ def create_app(cfg: Config) -> FastAPI:
     app.mount("/static", StaticFiles(directory=PKG_DIR / "static"), name="static")
 
     from job_cannon.web.routes import applications as r_apps
-    from job_cannon.web.routes import board, contacts, dashboard, files
+    from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files
     from job_cannon.web.routes import interactions as r_interactions
 
-    for module in (dashboard, r_apps, board, contacts, r_interactions, files):
+    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters):
         app.include_router(module.router)
 
     return app
