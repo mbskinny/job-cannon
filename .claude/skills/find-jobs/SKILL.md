@@ -9,9 +9,7 @@ The goal is a short list (default 4-5, or whatever number the user asks for) of 
 
 ## 1. Build the profile
 
-Fetch the résumé at https://mbskinny-cv.fly.dev (WebFetch). Pull out: seniority and title, core stack, standout domains (e.g. data visualization, observability), home location and citizenship, stated location preferences (remote/regions), and languages spoken. The résumé is the source of truth. If the user adds constraints in the request (salary floor, contract vs. employee, a specific domain), those override it.
-
-As of Oct 2026 the profile was: senior full-stack, TypeScript/React/Vue + Go + Python, D3/charting, based in Tuscany, Italian+US citizen, open to Tuscany or remote across Europe. Re-fetch anyway, because it may change.
+Read `.claude/job-search.local.md` for the résumé location and any notes. If it doesn't exist, ask the user where their résumé is and offer to create the file from `.claude/job-search.example.md`. Fetch the résumé (WebFetch for a URL, Read for a local file). Pull out: seniority and title, core stack, standout domains (e.g. data visualization, observability), home location and citizenship, stated location preferences (remote/regions), and languages spoken. The résumé is the source of truth for facts about the user. The profile's notes can add preferences it doesn't state, and constraints in the request (salary floor, contract vs. employee, a specific domain) override both.
 
 ## 2. Check what's already tracked
 

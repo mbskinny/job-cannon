@@ -20,7 +20,7 @@ If a draft already exists, ask before replacing it, because the user may have ed
 
 ## 2. Gather material
 
-- **Résumé**: https://mbskinny-cv.fly.dev (WebFetch). This is the only source of facts about the user.
+- **Résumé**: its location is in `.claude/job-search.local.md` (WebFetch for a URL, Read for a local file). If that file doesn't exist, ask the user where their résumé is and offer to create it from `.claude/job-search.example.md`. The résumé, plus that file's notes, is the only source of facts about the user.
 - **Posting**: `posting_url`. Use WebFetch, or for LinkedIn the user's Chrome (claude-in-chrome, new tab, `https://www.linkedin.com/jobs/view/<id>/`). **Read only**: never click Apply, Save, Message, or anything that sends something. If the posting is closed or unreachable, say so and work from the application's notes.
 - The application's `notes`, which often summarize the company, stack and fit.
 

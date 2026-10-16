@@ -6,3 +6,6 @@ dist/
 # Local data folders should never be committed
 data/
 *.db
+
+# Personal job-search profile read by the skills (see .claude/job-search.example.md)
+.claude/job-search.local.md

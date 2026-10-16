@@ -3,6 +3,7 @@ name = "job-cannon"
 version = "0.1.0"
 description = "Local job-search manager: applications, contacts, follow-ups, and files in one portable folder."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

@@ -8,6 +8,10 @@ Cover letters can start from named base letters with `{{placeholders}}`. Fill
 them in on the application page (or have Claude Code do it with the
 `tailor-cover-letter` skill), then attach the result as a PDF.
 
+The Claude Code skills (`find-jobs`, `tailor-cover-letter`) read your résumé
+location from `.claude/job-search.local.md`; copy
+`.claude/job-search.example.md` to get started.
+
 It runs on your own machine and opens in your browser. **All of your data lives
 in one folder**, so moving to another computer means copying that folder.
 
@@ -65,6 +69,11 @@ uv run pytest
 
 - `src/job_cannon/repo/` — data access (plain `sqlite3`)
 - `src/job_cannon/migrations/` — numbered SQL files, tracked with `PRAGMA user_version`;
-  add `002_*.sql` for schema changes, and existing databases upgrade on next start
+  add the next `NNN_*.sql` for schema changes, and existing databases upgrade on next start
 - `src/job_cannon/web/` — FastAPI routes; `templates/` Jinja + htmx; `static/` vendored
   Pico.css, htmx, and SortableJS (no build step, works offline)
+
+## License
+
+MIT. Vendored libraries and fonts keep their own licences (see the files in
+`src/job_cannon/static/` and the `fonts/` folders).
