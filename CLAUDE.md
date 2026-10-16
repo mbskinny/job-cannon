@@ -48,7 +48,7 @@ Security measures to preserve (the app is localhost-only):
 - `safe_next` allows only relative redirects, and the `http_only` Jinja filter allows only http(s) links in user-supplied URLs.
 - Attachments are served inline only for an allow-list of MIME types (`INLINE_TYPES` in `routes/files.py`), always with `nosniff`. Anything else is a download.
 
-Frontend: Pico.css, htmx, and SortableJS are vendored in `static/` so the app works offline. Don't add CDN links.
+Frontend: Pico.css, htmx, and SortableJS are vendored in `static/` so the app works offline. Don't add CDN links. Easter egg: double-clicking the header logo opens a cannon duel minigame (`static/cannon-game.js`, self-contained; single clicks still navigate after a 250 ms delay).
 
 Theme ("Ledger": navy ink, brass, cream paper; Rokkitt headings, Source Sans 3 body): `static/app.css` defines `--jc-*` colour tokens on `:root`, overrides them for dark mode, and maps them onto Pico's `--pico-*` variables in one block. Change colours through the tokens, not in individual rules. The fonts are vendored variable woff2 files in `static/fonts/`, with their OFL licences.
 

@@ -230,3 +230,9 @@ def test_interest_set_and_shown(client):
     assert 'aria-label="Interest 5 of 5"' in client.get("/board").text
     assert client.post(f"/applications/{app_id}/interest", data={"interest": "9"}).status_code == 400
     assert client.get("/applications?sort=interest").status_code == 200
+
+
+def test_cannon_game_asset(client):
+    assert '<script src="/static/cannon-game.js"' in client.get("/").text
+    resp = client.get("/static/cannon-game.js")
+    assert resp.status_code == 200 and "QUESTIONS" in resp.text

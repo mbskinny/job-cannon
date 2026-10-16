@@ -298,3 +298,17 @@ textarea.letter { font-family: Georgia, "DejaVu Serif", serif; line-height: 1.5;
 .start-draft select { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
 .start-draft button { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; }
 .saved { color: var(--jc-offer); font-weight: 600; }
+
+/* Easter egg: the cannon duel (static/cannon-game.js), opened by double-clicking the logo. */
+.cannon-game > article { width: 100%; max-width: 860px; }
+.cannon-game canvas { display: block; width: 100%; height: auto; border: 1px solid var(--jc-rule); border-radius: var(--pico-border-radius); }
+.cg-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 1rem; margin-top: 0.75rem; }
+.cg-controls label { flex: 1 1 10rem; margin-bottom: 0; }
+.cg-controls input[type=range] { margin-bottom: 0; }
+.cg-controls button { flex: none; width: auto; margin-bottom: 0; }
+.cg-options { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin-top: 0.5rem; }
+.cg-options label { margin-bottom: 0; }
+.cg-options small { color: var(--jc-muted); }
+.cg-question { text-align: left; }
+.cg-question small { color: var(--jc-muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; }
+.cg-question p { margin: 0.25rem 0 0.5rem; font-family: var(--jc-display); font-size: 1.25rem; color: var(--jc-ink); }
