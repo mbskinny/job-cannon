@@ -52,8 +52,12 @@ article > header h2 { font-size: 1.1rem; margin: 0; }
 .filters select { flex: 0 1 12rem; }
 .table-wrap { overflow-x: auto; }
 
-.form-actions { display: flex; gap: 0.75rem; }
-.form-actions > * { width: auto; }
+/* Button rows: the first button fills the row, the rest keep their natural width and never wrap their label.
+   Pico gives submit buttons width:100% and a bottom margin; the margin made flex stretch the sibling link taller,
+   so it moves to the row itself. :is() matches the specificity of Pico's button[type=submit] so width:auto wins. */
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: var(--pico-spacing); }
+.form-actions > :is(a, button) { width: auto; flex: none; margin-bottom: 0; white-space: nowrap; }
+.form-actions > :is(a, button):first-child { flex: 1 0 auto; }
 
 /* Status colors */
 .badge { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
@@ -127,6 +131,6 @@ button.link.danger, .danger-btn { color: var(--jc-rejected); border-color: var(-
 textarea.letter { font-family: Georgia, "DejaVu Serif", serif; line-height: 1.5; }
 .warn { color: var(--jc-interviewing); font-weight: 600; }
 .start-draft { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
-.start-draft select { margin-bottom: 0; }
-.start-draft button { width: auto; margin-bottom: 0; }
+.start-draft select { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.start-draft button { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; }
 .saved { color: var(--jc-offer); font-weight: 600; }
