@@ -2,6 +2,15 @@
 <span class="badge status-{{ status }}">{{ STATUS_LABELS[status] }}</span>
 {%- endmacro %}
 
+{% macro interest(level) -%}
+{% if level %}<span class="interest" title="Interest: {{ INTEREST_LABELS[level] }} ({{ level }}/5)" aria-label="Interest {{ level }} of 5">{{ '★' * level }}<span class="off">{{ '★' * (5 - level) }}</span></span>{% endif %}
+{%- endmacro %}
+
+{% macro interest_options(selected) -%}
+<option value="" {% if not selected %}selected{% endif %}>Unrated</option>
+{% for n in INTEREST_LEVELS|reverse %}<option value="{{ n }}" {% if n == selected %}selected{% endif %}>{{ '★' * n }} {{ INTEREST_LABELS[n] }}</option>{% endfor %}
+{%- endmacro %}
+
 {% macro due(date_s, today) -%}
 {% if date_s %}<span class="due {% if date_s < today %}overdue{% elif date_s == today %}today{% endif %}">{{ date_s }}</span>{% endif %}
 {%- endmacro %}

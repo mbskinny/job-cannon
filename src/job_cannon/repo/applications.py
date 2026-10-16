@@ -7,10 +7,13 @@ from job_cannon.db import now
 STATUSES = ["wishlist", "applied", "screening", "interviewing", "offer", "rejected", "withdrawn"]
 STATUS_LABELS = {s: s.capitalize() for s in STATUSES}
 ACTIVE_STATUSES = ["wishlist", "applied", "screening", "interviewing", "offer"]
+INTEREST_LEVELS = [1, 2, 3, 4, 5]
+INTEREST_LABELS = {1: "Low", 2: "Some", 3: "Interested", 4: "Keen", 5: "Dream job"}
+SORTS = {"updated": "a.updated_at DESC", "interest": "a.interest IS NULL, a.interest DESC, a.updated_at DESC"}
 
 FIELDS = [
     "role", "posting_url", "location", "salary_range", "status", "source",
-    "applied_on", "next_action", "next_action_due", "notes",
+    "applied_on", "next_action", "next_action_due", "notes", "interest",
 ]
 DATE_FIELDS = {"applied_on", "next_action_due"}
 
@@ -20,10 +23,26 @@ _SELECT = """
 """
 
 
+def _interest(value) -> int | None:
+    """Parse an interest level; blank means unrated."""
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        level = int(str(value).strip())
+    except ValueError:
+        raise ValueError(f"interest must be 1-5: {value}") from None
+    if level not in INTEREST_LEVELS:
+        raise ValueError(f"interest must be 1-5: {value}")
+    return level
+
+
 def _clean(data: dict) -> dict:
     out = {}
     for key in FIELDS:
         if key not in data:
+            continue
+        if key == "interest":
+            out[key] = _interest(data[key])
             continue
         value = (data[key] or "").strip()
         out[key] = (value or None) if key in DATE_FIELDS else value
@@ -48,7 +67,9 @@ def list_companies(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return conn.execute("SELECT * FROM companies ORDER BY name").fetchall()
 
 
-def list_applications(conn, status: str | None = None, q: str | None = None) -> list[sqlite3.Row]:
+def list_applications(
+    conn, status: str | None = None, q: str | None = None, sort: str = "updated"
+) -> list[sqlite3.Row]:
     where, params = [], []
     if status:
         where.append("a.status = ?")
@@ -57,7 +78,7 @@ def list_applications(conn, status: str | None = None, q: str | None = None) -> 
         where.append("(a.role LIKE ? OR c.name LIKE ? OR a.location LIKE ? OR a.notes LIKE ?)")
         params += [f"%{q}%"] * 4
     sql = _SELECT + (" WHERE " + " AND ".join(where) if where else "")
-    sql += " ORDER BY a.updated_at DESC"
+    sql += " ORDER BY " + SORTS.get(sort, SORTS["updated"])
     return conn.execute(sql, params).fetchall()
 
 

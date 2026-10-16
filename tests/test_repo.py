@@ -185,3 +185,17 @@ def test_render_letter_with_full_letterhead():
           "website": "https://example.com/", "accent": "#336699"}
     assert render_letter("15 October 2026\n\nDear X,\n\nè €\n\nBest,\nAda", lh).startswith(b"%PDF")
     assert render_letter("No date here").startswith(b"%PDF")
+
+
+def test_interest_level(conn):
+    a = applications.create(conn, "Acme", {"role": "Eng", "interest": "4"})
+    b = applications.create(conn, "Globex", {"role": "Eng"})
+    c = applications.create(conn, "Initech", {"role": "Eng", "interest": 2})
+    assert applications.get(conn, a)["interest"] == 4
+    assert applications.get(conn, b)["interest"] is None
+    assert [r["id"] for r in applications.list_applications(conn, sort="interest")] == [a, c, b]
+    applications.update(conn, a, {"interest": ""})
+    assert applications.get(conn, a)["interest"] is None
+    for bad in ("0", "6", "high"):
+        with pytest.raises(ValueError):
+            applications.update(conn, b, {"interest": bad})

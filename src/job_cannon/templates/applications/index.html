@@ -11,6 +11,10 @@
     <option value="">All statuses</option>
     {% for s in STATUSES %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ STATUS_LABELS[s] }}</option>{% endfor %}
   </select>
+  <select name="sort" aria-label="Sort">
+    <option value="updated" {% if sort != 'interest' %}selected{% endif %}>Recently updated</option>
+    <option value="interest" {% if sort == 'interest' %}selected{% endif %}>Most interested</option>
+  </select>
   <noscript><button>Filter</button></noscript>
 </form>
 <div id="rows">{% include "applications/_rows.html" %}</div>

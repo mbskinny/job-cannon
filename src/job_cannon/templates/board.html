@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import due %}
+{% from "partials/macros.html" import due, interest %}
 {% block title %}Board{% endblock %}
 {% block main_class %}container-fluid{% endblock %}
 {% block content %}
@@ -20,6 +20,7 @@
         <a href="/applications/{{ a.id }}">
           <strong>{{ a.company_name }}</strong>
           <span>{{ a.role }}</span>
+          {% if a.interest %}<small>{{ interest(a.interest) }}</small>{% endif %}
           {% if a.next_action_due %}<small>{{ a.next_action or 'Next action' }} {{ due(a.next_action_due, today) }}</small>{% endif %}
         </a>
       </li>

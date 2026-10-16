@@ -67,6 +67,9 @@ article > header h2 { font-size: 1.1rem; margin: 0; }
 .status-rejected { --jc-c: var(--jc-rejected); }
 .status-withdrawn { --jc-c: var(--jc-withdrawn); }
 
+.interest { color: var(--jc-interviewing); letter-spacing: 0.05em; white-space: nowrap; }
+.interest .off { color: var(--pico-muted-border-color); }
+
 .due { font-variant-numeric: tabular-nums; font-size: 0.85em; padding: 0 0.35rem; border-radius: 4px; background: var(--pico-muted-border-color); }
 .due.overdue { background: color-mix(in srgb, var(--jc-rejected) 20%, transparent); color: var(--jc-rejected); font-weight: 600; }
 .due.today { background: color-mix(in srgb, var(--jc-interviewing) 22%, transparent); font-weight: 600; }

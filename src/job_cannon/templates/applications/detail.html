@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import status_badge, due, interaction_form, interaction_list %}
+{% from "partials/macros.html" import status_badge, due, interest, interest_options, interaction_form, interaction_list %}
 {% block title %}{{ app.company_name }} — {{ app.role }}{% endblock %}
 {% block content %}
 {% set here = '/applications/%d' % app.id %}
@@ -15,6 +15,10 @@
       </select>
       <noscript><button>Set</button></noscript>
     </form>
+    <form method="post" action="{{ here }}/interest" class="status-switch">
+      <select name="interest" aria-label="Interest" onchange="this.form.submit()">{{ interest_options(app.interest) }}</select>
+      <noscript><button>Set</button></noscript>
+    </form>
     <a href="{{ here }}/edit" role="button" class="secondary outline">Edit</a>
   </div>
 </div>
@@ -24,6 +28,7 @@
     <article>
       <dl class="facts">
         <dt>Status</dt><dd>{{ status_badge(app.status) }}</dd>
+        {% if app.interest %}<dt>Interest</dt><dd>{{ interest(app.interest) }} {{ INTEREST_LABELS[app.interest] }}</dd>{% endif %}
         {% if app.posting_url %}<dt>Posting</dt><dd><a href="{{ app.posting_url|http_only }}" target="_blank" rel="noopener noreferrer">{{ app.posting_url|truncate(60) }}</a></dd>{% endif %}
         {% if app.applied_on %}<dt>Applied</dt><dd>{{ app.applied_on }}</dd>{% endif %}
         {% if app.source %}<dt>Source</dt><dd>{{ app.source }}</dd>{% endif %}

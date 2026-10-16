@@ -220,3 +220,12 @@ def test_draft_hints_when_letterhead_missing(client):
     app_id = _create_app(client)
     client.post(f"/applications/{app_id}/cover-letter/save", data={"body": "Hi"})
     assert "No letterhead yet" in client.get(f"/applications/{app_id}").text
+
+
+def test_interest_set_and_shown(client):
+    app_id = _create_app(client, interest="3")
+    assert 'aria-label="Interest 3 of 5"' in client.get(f"/applications/{app_id}").text
+    client.post(f"/applications/{app_id}/interest", data={"interest": "5"})
+    assert 'aria-label="Interest 5 of 5"' in client.get("/board").text
+    assert client.post(f"/applications/{app_id}/interest", data={"interest": "9"}).status_code == 400
+    assert client.get("/applications?sort=interest").status_code == 200

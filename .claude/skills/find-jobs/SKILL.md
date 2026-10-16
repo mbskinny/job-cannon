@@ -67,7 +67,9 @@ Write a JSON file in the scratchpad and run the bundled script, which backs up t
 uv run python .claude/skills/find-jobs/scripts/add_applications.py <scratchpad>/jobs.json
 ```
 
-Field guidance: omit `status` (defaults to wishlist). `location` should state the remote terms, not just a city. `salary_range` should be as printed, with currency. `notes` should cover what the company does, the stack, the fit, and any caveats in 2-4 sentences. Leave out fields you don't know rather than guessing.
+Field guidance: omit `status` (defaults to wishlist). Omit `interest` (1-5) unless the user gave you a rating; they usually rate listings themselves after reviewing them. `location` should state the remote terms, not just a city. `salary_range` should be as printed, with currency. `notes` should cover what the company does, the stack, the fit, and any caveats in 2-4 sentences. Leave out fields you don't know rather than guessing.
+
+To set interest levels later (e.g. "make Toggl a 5"), find the ids with `--list` (the third column is interest) and run `--rate ID=LEVEL ...` (blank level clears it). This doesn't back up first; it only touches the `interest` column.
 
 ## 6. Report
 

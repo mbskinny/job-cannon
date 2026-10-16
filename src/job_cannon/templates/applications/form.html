@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Edit' if app else 'New' }} application{% endblock %}
+{% from "partials/macros.html" import interest_options %}
 {% block content %}
 <h1>{{ 'Edit application' if app else 'New application' }}</h1>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
@@ -18,6 +19,9 @@
       <select name="status">
         {% for s in STATUSES %}<option value="{{ s }}" {% if s == (values.status or 'wishlist') %}selected{% endif %}>{{ STATUS_LABELS[s] }}</option>{% endfor %}
       </select>
+    </label>
+    <label>Interest
+      <select name="interest">{{ interest_options(values.interest|int if values.interest else None) }}</select>
     </label>
     <label>Applied on
       <input type="date" name="applied_on" value="{{ values.applied_on or '' }}">

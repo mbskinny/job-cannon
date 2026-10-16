@@ -3,9 +3,12 @@
 Usage (from the repo root):
     uv run python .claude/skills/find-jobs/scripts/add_applications.py --list
     uv run python .claude/skills/find-jobs/scripts/add_applications.py jobs.json [--dry-run]
+    uv run python .claude/skills/find-jobs/scripts/add_applications.py --rate 12=5 14=2 15=
+
+--rate sets interest levels (1-5, blank to clear) on tracked applications by id.
 
 jobs.json is a list of objects with "company" plus any of applications.FIELDS
-(role is required). Data folder resolves the same way as the app:
+(role is required; "interest" is an optional 1-5 level). Data folder resolves the same way as the app:
 --data-dir, then JOB_CANNON_DATA, then ~/JobCannon.
 """
 
@@ -38,6 +41,7 @@ def main() -> int:
     p.add_argument("jobs", nargs="?", help="JSON file of listings to add")
     p.add_argument("--data-dir")
     p.add_argument("--list", action="store_true", help="print tracked applications and exit")
+    p.add_argument("--rate", nargs="+", metavar="ID=LEVEL", help="set interest levels and exit")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--no-backup", action="store_true")
     args = p.parse_args()
@@ -48,9 +52,21 @@ def main() -> int:
     db.migrate(conn)
     rows = existing(conn)
 
+    if args.rate:
+        by_id = {r["id"]: r for r in rows}
+        for item in args.rate:
+            app_id, _, level = item.partition("=")
+            r = by_id.get(int(app_id))
+            if r is None:
+                print(f"no application #{app_id}", file=sys.stderr)
+                return 1
+            applications.update(conn, r["id"], {"interest": level})
+            print(f"#{r['id']} {r['company_name']} - {r['role']}: interest {level or 'cleared'}")
+        return 0
+
     if args.list or not args.jobs:
         for r in rows:
-            print(f"{r['id']}\t{r['status']}\t{r['company_name']}\t{r['role']}\t{r['posting_url'] or ''}")
+            print(f"{r['id']}\t{r['status']}\t{r['interest'] or '-'}\t{r['company_name']}\t{r['role']}\t{r['posting_url'] or ''}")
         return 0
 
     with open(args.jobs) as f:

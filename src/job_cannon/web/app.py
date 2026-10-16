@@ -26,6 +26,8 @@ templates = Jinja2Templates(directory=PKG_DIR / "templates")
 templates.env.globals.update(
     STATUSES=applications.STATUSES,
     STATUS_LABELS=applications.STATUS_LABELS,
+    INTEREST_LEVELS=applications.INTEREST_LEVELS,
+    INTEREST_LABELS=applications.INTEREST_LABELS,
     ATTACHMENT_KINDS=attachments.KIND_LABELS,
     INTERACTION_KINDS=interactions.KINDS,
 )

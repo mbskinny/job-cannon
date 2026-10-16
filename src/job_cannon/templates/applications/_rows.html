@@ -1,14 +1,15 @@
-{% from "partials/macros.html" import status_badge, due %}
+{% from "partials/macros.html" import status_badge, due, interest %}
 {% if rows %}
 <div class="table-wrap">
 <table class="striped">
-  <thead><tr><th>Company</th><th>Role</th><th>Status</th><th>Applied</th><th>Next action</th><th>Updated</th></tr></thead>
+  <thead><tr><th>Company</th><th>Role</th><th>Status</th><th>Interest</th><th>Applied</th><th>Next action</th><th>Updated</th></tr></thead>
   <tbody>
     {% for a in rows %}
     <tr>
       <td><a href="/applications/{{ a.id }}">{{ a.company_name }}</a></td>
       <td><a href="/applications/{{ a.id }}">{{ a.role }}</a>{% if a.location %}<br><small class="muted">{{ a.location }}</small>{% endif %}</td>
       <td>{{ status_badge(a.status) }}</td>
+      <td>{{ interest(a.interest) }}</td>
       <td>{{ a.applied_on or '' }}</td>
       <td>{{ a.next_action }} {{ due(a.next_action_due, today) }}</td>
       <td><small class="muted">{{ a.updated_at[:10] }}</small></td>

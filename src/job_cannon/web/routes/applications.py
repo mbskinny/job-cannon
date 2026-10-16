@@ -18,10 +18,10 @@ def _get_or_404(request: Request, app_id: int):
 
 
 @router.get("")
-async def index(request: Request, status: str = "", q: str = ""):
-    rows = applications.list_applications(conn(request), status or None, q.strip() or None)
+async def index(request: Request, status: str = "", q: str = "", sort: str = "updated"):
+    rows = applications.list_applications(conn(request), status or None, q.strip() or None, sort)
     template = "applications/_rows.html" if request.headers.get("hx-request") else "applications/index.html"
-    return render(request, template, rows=rows, status=status, q=q)
+    return render(request, template, rows=rows, status=status, q=q, sort=sort)
 
 
 @router.get("/new")
@@ -110,6 +110,17 @@ async def set_status(request: Request, app_id: int):
     form = await request.form()
     try:
         applications.update(conn(request), app_id, {"status": form.get("status", "")})
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    return redirect(f"/applications/{app_id}")
+
+
+@router.post("/{app_id}/interest")
+async def set_interest(request: Request, app_id: int):
+    _get_or_404(request, app_id)
+    form = await request.form()
+    try:
+        applications.update(conn(request), app_id, {"interest": form.get("interest", "")})
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     return redirect(f"/applications/{app_id}")
