@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ledger theme — dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@600;700;800&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A6220}a:hover{color:#5E4213}
+.app{width:1200px;min-height:880px;box-sizing:border-box;background:#F6F1E7;color:#1B2A4A;font-family:"Source Sans 3",system-ui,sans-serif;font-size:15px;line-height:1.5}
+.s-wishlist{--c:#7D766A}.s-applied{--c:#2F5D8A}.s-screening{--c:#6B4E8A}.s-interviewing{--c:#9A6914}.s-offer{--c:#3E7A4F}.s-rejected{--c:#A63D2F}.s-withdrawn{--c:#6E685C}
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 40px;background:#1B2A4A;border-bottom:4px solid #C8963E}
+.brand{display:flex;align-items:center;gap:10px;color:#F6F1E7;text-decoration:none}
+.wordmark{font-family:"Rokkitt",Georgia,serif;font-weight:800;font-size:28px;line-height:1}
+.nav{display:flex;align-items:center;gap:26px}
+.nav a{color:#E9E2D2;text-decoration:none;font-weight:600;padding:4px 0;border-bottom:2px solid transparent}
+.nav a:hover{color:#fff}
+.nav a.cur{color:#E0B263;border-bottom-color:#E0B263}
+.nav a.cta{background:#C8963E;color:#1B2A4A;padding:7px 16px;border-radius:2px;border:0;font-weight:700}
+.main{padding:30px 40px 40px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-family:"Rokkitt",Georgia,serif;font-weight:800;font-size:40px;line-height:1.05}
+.muted{color:#6E6455;margin:4px 0 0;font-size:14px}
+.pipeline{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}
+.stat{display:flex;flex-direction:column;padding:12px 16px 14px;background:#FFFDF8;border:1px solid #E2D8C3;border-top:3px solid var(--c);border-radius:2px;text-decoration:none;color:#1B2A4A}
+.stat .v{font-family:"Rokkitt",Georgia,serif;font-weight:800;font-size:36px;line-height:1.05;color:var(--c)}
+.stat .l{color:#6E6455;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+.grid{display:grid;grid-template-columns:3fr 2fr;gap:24px;align-items:start}
+.panel{background:#FFFDF8;border:1px solid #E2D8C3;border-radius:2px;padding:18px 22px 20px}
+.ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #E2D8C3;font-size:14px;font-weight:600}
+h2{margin:0;font-family:"Rokkitt",Georgia,serif;font-weight:700;font-size:22px}
+.kb{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.col{background:#F1EADB;border-radius:2px;padding:8px;border-top:3px solid var(--c);display:flex;flex-direction:column;gap:8px}
+.ch{display:flex;justify-content:space-between;align-items:center;font-family:"Rokkitt",Georgia,serif;font-weight:700;font-size:16px;padding:0 4px}
+.cnt{color:#6E6455;font-family:"Source Sans 3",sans-serif;font-size:12px;font-weight:600}
+.card{background:#FFFDF8;border:1px solid #E2D8C3;border-radius:2px;padding:9px 10px;display:flex;flex-direction:column;gap:1px;font-size:13px;line-height:1.35}
+.card b{font-weight:700}
+.card small{color:#6E6455;font-size:12px}
+.stars{color:#B07A1E;font-size:12px;letter-spacing:.05em}.stars .off{color:#E2D8C3}
+.more{font-size:12px;color:#6E6455;text-align:center;font-style:italic}
+h3{font-size:11px;margin:14px 0 2px;color:#6E6455;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+h3.g-over{color:#A63D2F}
+.fu{list-style:none;padding:0;margin:0}
+.fu li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:8px 0;border-bottom:1px dashed #E2D8C3;font-size:14px;line-height:1.35}
+.fu li:last-child{border-bottom:0}
+.fu small{display:block;color:#6E6455;font-size:12px}
+.due{font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;padding:1px 6px;border-radius:2px;background:#EDE4D2;white-space:nowrap}
+.due.over{background:#F3DCD5;color:#A63D2F}
+.due.today{background:#F3E3C0;color:#6B4A14}
+.badge{display:inline-block;padding:0 7px;border:1px solid var(--c);border-radius:2px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--c);white-space:nowrap}
+</style>
+</helmet>
+<div class="app">
+<header class="top">
+<a class="brand" href="#"><svg width="42" height="42" viewBox="0 0 120 120" aria-hidden="true"><rect x="14" y="102" width="92" height="4" rx="2" fill="#F6F1E7"></rect><g transform="rotate(-22 52 72)"><path d="M34 60 L93 63 L93 79 L34 82 Z" fill="#F6F1E7"></path><rect x="89" y="59" width="8" height="24" rx="2" fill="#D9A853"></rect><rect x="60" y="61" width="4" height="20" fill="#D9A853"></rect><circle cx="32" cy="71" r="9" fill="#F6F1E7"></circle><circle cx="22" cy="71" r="4.5" fill="#D9A853"></circle></g><circle cx="50" cy="84" r="17" fill="#1B2A4A" stroke="#F6F1E7" stroke-width="5"></circle><path d="M50 70 V98 M36 84 H64 M40.1 74.1 L59.9 93.9 M59.9 74.1 L40.1 93.9" stroke="#F6F1E7" stroke-width="2.5"></path><circle cx="50" cy="84" r="4.5" fill="#D9A853"></circle><circle cx="106" cy="47" r="7" fill="#D9A853"></circle></svg><span class="wordmark">Job Cannon</span></a>
+<nav class="nav"><a class="cur" href="#">Dashboard</a><a href="#">Board</a><a href="#">Applications</a><a href="#">Contacts</a><a href="#">Cover letters</a><a class="cta" href="#">+ New</a></nav>
+</header>
+<main class="main">
+<div><h1>Dashboard</h1><p class="muted">Friday 16 October 2026 · 34 applications tracked</p></div>
+<div class="pipeline">
+<a class="stat s-wishlist" href="#"><span class="v">12</span><span class="l">Wishlist</span></a>
+<a class="stat s-applied" href="#"><span class="v">8</span><span class="l">Applied</span></a>
+<a class="stat s-screening" href="#"><span class="v">3</span><span class="l">Screening</span></a>
+<a class="stat s-interviewing" href="#"><span class="v">2</span><span class="l">Interviewing</span></a>
+<a class="stat s-offer" href="#"><span class="v">1</span><span class="l">Offer</span></a>
+<a class="stat s-rejected" href="#"><span class="v">6</span><span class="l">Rejected</span></a>
+<a class="stat s-withdrawn" href="#"><span class="v">2</span><span class="l">Withdrawn</span></a>
+</div>
+<div class="grid">
+<section class="panel">
+<div class="ph"><h2>Board</h2><a href="#">Open board →</a></div>
+<div class="kb">
+<div class="col s-applied"><div class="ch"><span>Applied</span><span class="cnt">8</span></div>
+<div class="card"><b>Platform Engineer</b><small>Northwind Labs</small><span class="stars">★★★★<span class="off">★</span></span></div>
+<div class="card"><b>Backend Developer</b><small>Harbor &amp; Finch</small><span class="stars">★★★<span class="off">★★</span></span></div>
+<div class="more">+ 6 more</div></div>
+<div class="col s-screening"><div class="ch"><span>Screening</span><span class="cnt">3</span></div>
+<div class="card"><b>Data Engineer</b><small>Tidewater Analytics</small><span class="stars">★★★★<span class="off">★</span></span></div>
+<div class="more">+ 2 more</div></div>
+<div class="col s-interviewing"><div class="ch"><span>Interviewing</span><span class="cnt">2</span></div>
+<div class="card"><b>Senior Software Engineer</b><small>Halcyon Health</small><span class="stars">★★★★★</span></div>
+<div class="card"><b>Staff Engineer</b><small>Lumen Grid</small><span class="stars">★★★<span class="off">★★</span></span></div></div>
+<div class="col s-offer"><div class="ch"><span>Offer</span><span class="cnt">1</span></div>
+<div class="card"><b>Software Engineer II</b><small>Copperline</small><span class="stars">★★★★<span class="off">★</span></span></div></div>
+</div>
+</section>
+<section class="panel">
+<div class="ph"><h2>Follow-ups</h2><span class="muted">4 open</span></div>
+<h3 class="g-over">Overdue</h3>
+<ul class="fu"><li><span class="due over">14 Oct</span><div>Send thank-you note<small>Halcyon Health</small></div><span class="badge s-interviewing">Interviewing</span></li></ul>
+<h3>Today</h3>
+<ul class="fu"><li><span class="due today">14:00</span><div>Recruiter call<small>Tidewater Analytics</small></div><span class="badge s-screening">Screening</span></li></ul>
+<h3>Upcoming</h3>
+<ul class="fu"><li><span class="due">20 Oct</span><div>Check in on application<small>Northwind Labs</small></div><span class="badge s-applied">Applied</span></li>
+<li><span class="due">22 Oct</span><div>System design prep<small>Lumen Grid</small></div><span class="badge s-interviewing">Interviewing</span></li></ul>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":880}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
