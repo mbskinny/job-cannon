@@ -12,15 +12,25 @@
 <body>
   <header class="container-fluid site-header">
     <nav>
-      <ul><li><a href="/" class="brand">{% include "partials/logo.html" %}<span class="wordmark">Job Cannon</span></a></li></ul>
+      <ul><li><a href="/" class="brand" aria-label="Job Cannon">{% include "partials/logo.html" %}<span class="wordmark">Job Cannon</span></a></li></ul>
+      {% set path = request.url.path %}
+      {% set nav_items = [('/', 'Dashboard'), ('/board', 'Board'), ('/applications', 'Applications'),
+                          ('/contacts', 'Contacts'), ('/cover-letters', 'Cover letters')] %}
+      {% macro nav_link(href, label) -%}
+        <a href="{{ href }}" {% if (path == '/' if href == '/' else path.startswith(href)) %}aria-current="page"{% endif %}>{{ label }}</a>
+      {%- endmacro %}
       <ul>
-        {% set path = request.url.path %}
-        <li><a href="/" {% if path == '/' %}aria-current="page"{% endif %}>Dashboard</a></li>
-        <li><a href="/board" {% if path.startswith('/board') %}aria-current="page"{% endif %}>Board</a></li>
-        <li><a href="/applications" {% if path.startswith('/applications') %}aria-current="page"{% endif %}>Applications</a></li>
-        <li><a href="/contacts" {% if path.startswith('/contacts') %}aria-current="page"{% endif %}>Contacts</a></li>
-        <li><a href="/cover-letters" {% if path.startswith('/cover-letters') %}aria-current="page"{% endif %}>Cover letters</a></li>
+        {# Wide screens show the links inline; narrow ones collapse them into the menu (see .nav-link / .nav-menu in app.css). #}
+        {% for href, label in nav_items %}<li class="nav-link">{{ nav_link(href, label) }}</li>{% endfor %}
         <li><a href="/applications/new" role="button" class="nav-cta">+ New</a></li>
+        <li class="nav-menu">
+          <details class="dropdown">
+            <summary aria-label="Menu"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></summary>
+            <ul dir="rtl">
+              {% for href, label in nav_items %}<li dir="ltr">{{ nav_link(href, label) }}</li>{% endfor %}
+            </ul>
+          </details>
+        </li>
       </ul>
     </nav>
   </header>

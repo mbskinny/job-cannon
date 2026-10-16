@@ -50,6 +50,8 @@ Security measures to preserve (the app is localhost-only):
 
 Frontend: Pico.css, htmx, and SortableJS are vendored in `static/` so the app works offline. Don't add CDN links.
 
+Theme ("Ledger": navy ink, brass, cream paper; Rokkitt headings, Source Sans 3 body): `static/app.css` defines `--jc-*` colour tokens on `:root`, overrides them for dark mode, and maps them onto Pico's `--pico-*` variables in one block. Change colours through the tokens, not in individual rules. The fonts are vendored variable woff2 files in `static/fonts/`, with their OFL licences.
+
 ## Tests
 
 `tests/conftest.py` provides `cfg` (a temp data dir), `conn` (a migrated connection, for repo tests), and `client` (a FastAPI `TestClient` over `create_app`, for web tests). Tests never touch `~/JobCannon`.
