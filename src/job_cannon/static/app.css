@@ -232,7 +232,7 @@ th { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spac
 .interest { color: var(--jc-interviewing); letter-spacing: 0.05em; white-space: nowrap; }
 .interest .off { color: var(--pico-muted-border-color); }
 
-.due { font-variant-numeric: tabular-nums; font-size: 0.85em; font-weight: 600; padding: 0 0.35rem; border-radius: 2px;
+.due { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 0.85em; font-weight: 600; padding: 0 0.35rem; border-radius: 2px;
   background: var(--jc-sunken); box-shadow: inset 0 0 0 1px var(--jc-rule); }
 .due.overdue { background: color-mix(in srgb, var(--jc-rejected) 16%, transparent); color: var(--jc-rejected); box-shadow: none; }
 .due.today { background: color-mix(in srgb, var(--jc-brass) 28%, transparent); box-shadow: none; }

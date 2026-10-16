@@ -8,6 +8,11 @@ Cover letters can start from named base letters with `{{placeholders}}`. Fill
 them in on the application page (or have Claude Code do it with the
 `tailor-cover-letter` skill), then attach the result as a PDF.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/board-dark.png">
+  <img alt="The Job Cannon board: applications as cards in Wishlist, Applied, Screening, Interviewing, Offer, Rejected and Withdrawn columns, with interest stars and next-action due dates" src="docs/board-light.png">
+</picture>
+
 The Claude Code skills (`find-jobs`, `tailor-cover-letter`) read your résumé
 location from `.claude/job-search.local.md`; copy
 `.claude/job-search.example.md` to get started.
