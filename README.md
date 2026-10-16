@@ -1,5 +1,7 @@
 # Job Cannon
 
+Most important thing first: the name is a reference to [this](https://www.youtube.com/watch?v=wbq571QME2Y&t=28s).
+
 A local job-search manager: applications, a kanban board, contacts, interaction
 log with follow-ups, and attached files (resumes, cover letters, postings).
 Cover letters can start from named base letters with `{{placeholders}}`. Fill
