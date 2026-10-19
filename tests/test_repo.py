@@ -67,6 +67,23 @@ def test_reorder_moves_between_columns(conn):
     assert [r["id"] for r in applications.board(conn)["applied"]] == [c, b]
 
 
+def test_applied_on_set_when_moved_to_applied(conn):
+    today = date.today().isoformat()
+    created = applications.create(conn, "A", {"role": "r", "status": "applied"})
+    edited = applications.create(conn, "B", {"role": "r"})
+    dragged = applications.create(conn, "C", {"role": "r"})
+    dated = applications.create(conn, "D", {"role": "r", "applied_on": "2026-01-02"})
+    assert applications.get(conn, edited)["applied_on"] is None
+    applications.update(conn, edited, {"status": "applied", "applied_on": ""})
+    applications.reorder(conn, "applied", [dragged, dated])
+    for app_id in (created, edited, dragged):
+        assert applications.get(conn, app_id)["applied_on"] == today
+    assert applications.get(conn, dated)["applied_on"] == "2026-01-02"
+    # Clearing the date later, without a status change, sticks.
+    applications.update(conn, edited, {"status": "applied", "applied_on": ""})
+    assert applications.get(conn, edited)["applied_on"] is None
+
+
 def test_contacts_link_and_unlink(conn):
     app_id = applications.create(conn, "Acme", {"role": "Eng"})
     pid = contacts.create(conn, {"name": "Dana Recruiter"}, company="Acme")

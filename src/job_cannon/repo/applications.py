@@ -1,6 +1,7 @@
 """Applications and companies."""
 
 import sqlite3
+from datetime import date
 
 from job_cannon.db import now
 
@@ -106,6 +107,8 @@ def create(conn, company: str, data: dict) -> int:
     if not fields.get("role"):
         raise ValueError("role is required")
     fields.setdefault("status", "wishlist")
+    if fields["status"] == "applied" and not fields.get("applied_on"):
+        fields["applied_on"] = date.today().isoformat()
     with conn:
         fields["company_id"] = get_or_create_company(conn, company)
         fields["position"] = _next_position(conn, fields["status"])
@@ -133,6 +136,8 @@ def update(conn, app_id: int, data: dict, company: str | None = None) -> None:
         if new_status and new_status != current["status"]:
             fields["position"] = _next_position(conn, new_status)
             _record_status(conn, app_id, current["status"], new_status)
+            if new_status == "applied" and not fields.get("applied_on", current["applied_on"]):
+                fields["applied_on"] = date.today().isoformat()
         fields["updated_at"] = now()
         assignments = ", ".join(f"{k} = ?" for k in fields)
         conn.execute(
@@ -146,14 +151,20 @@ def reorder(conn, status: str, ordered_ids: list[int]) -> None:
         raise ValueError(f"unknown status: {status}")
     with conn:
         for position, app_id in enumerate(ordered_ids):
-            row = conn.execute("SELECT status FROM applications WHERE id = ?", (app_id,)).fetchone()
+            row = conn.execute(
+                "SELECT status, applied_on FROM applications WHERE id = ?", (app_id,)
+            ).fetchone()
             if row is None:
                 continue
             if row["status"] != status:
                 _record_status(conn, app_id, row["status"], status)
+                applied_on = row["applied_on"]
+                if status == "applied" and not applied_on:
+                    applied_on = date.today().isoformat()
                 conn.execute(
-                    "UPDATE applications SET status = ?, position = ?, updated_at = ? WHERE id = ?",
-                    (status, position, now(), app_id),
+                    "UPDATE applications SET status = ?, position = ?, applied_on = ?, updated_at = ?"
+                    " WHERE id = ?",
+                    (status, position, applied_on, now(), app_id),
                 )
             else:
                 conn.execute(
