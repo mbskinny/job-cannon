@@ -196,6 +196,24 @@ def test_cover_letter_template_draft_and_attach(client, cfg):
     assert "No base letters yet" in client.get("/cover-letters").text
 
 
+def test_save_base_letter_as_new(client):
+    client.post("/cover-letters", data={"name": "Base", "body": "Original"})
+    tpl_id = re.search(r'/cover-letters/(\d+)"', client.get("/cover-letters").text).group(1)
+    assert "Save as new" in client.get(f"/cover-letters/{tpl_id}").text
+
+    resp = client.post(f"/cover-letters/{tpl_id}/copy", data={"name": "base", "body": "Changed"})
+    assert resp.status_code == 422 and "different name" in resp.text and "Changed" in resp.text
+
+    resp = client.post(f"/cover-letters/{tpl_id}/copy", data={"name": "Variant", "body": "Changed"},
+                       follow_redirects=False)
+    assert resp.status_code == 303
+    new_id = resp.headers["location"].rsplit("/", 1)[1]
+    assert new_id != tpl_id and "Changed" in client.get(f"/cover-letters/{new_id}").text
+    original = client.get(f"/cover-letters/{tpl_id}").text
+    assert 'value="Base"' in original and "Original" in original and "Changed" not in original
+    assert client.post("/cover-letters/999/copy", data={"name": "X", "body": ""}).status_code == 404
+
+
 def test_letterhead_settings_and_previews(client):
     assert "Letterhead" in client.get("/cover-letters").text
     resp = client.post("/cover-letters/letterhead", data={"name": "Ada", "accent": "#123456"}, follow_redirects=False)

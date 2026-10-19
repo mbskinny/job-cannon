@@ -23,6 +23,7 @@
   {% endif %}
   <div class="form-actions">
     <button type="submit">Save</button>
+    {% if template %}<button type="submit" formaction="/cover-letters/{{ template.id }}/copy" class="secondary" title="Keep this base letter as it was and save the form as a new one (give it a new name)">Save as new</button>{% endif %}
     <a href="/cover-letters" role="button" class="secondary outline">Back</a>
   </div>
 </form>

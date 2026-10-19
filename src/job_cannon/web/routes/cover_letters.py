@@ -120,6 +120,23 @@ async def update(request: Request, template_id: int):
     return redirect(f"/cover-letters/{template_id}")
 
 
+@router.post("/cover-letters/{template_id}/copy")
+async def save_as_new(request: Request, template_id: int):
+    """Save the edit form as a new base letter, leaving the original untouched."""
+    template = _template_or_404(request, template_id)
+    form = await request.form()
+    values = {"name": form.get("name", ""), "body": form.get("body", "")}
+    try:
+        new_id = cover_letters.create_template(conn(request), values["name"], values["body"])
+    except ValueError as exc:
+        return render(
+            request, "cover_letters/form.html", status_code=422, template=template, values=values,
+            slots=cover_letters.placeholders(values["body"]),
+            error=f"{exc}. Give the new base letter a different name.",
+        )
+    return redirect(f"/cover-letters/{new_id}")
+
+
 @router.post("/cover-letters/{template_id}/delete")
 async def delete(request: Request, template_id: int):
     _template_or_404(request, template_id)
