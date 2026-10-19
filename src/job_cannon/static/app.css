@@ -299,6 +299,35 @@ textarea.letter { font-family: Georgia, "DejaVu Serif", serif; line-height: 1.5;
 .start-draft button { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; }
 .saved { color: var(--jc-offer); font-weight: 600; }
 
+/* Interview prep */
+.tag, .tag-chip { display: inline-block; padding: 0 0.45rem; border: 1px solid var(--jc-rule); border-radius: 2px; background: var(--jc-sunken);
+  color: var(--jc-ink-soft); font-size: 0.8rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+a.tag:hover { color: var(--jc-ink); border-color: var(--jc-field-border); text-decoration: none; }
+.prep-filters > button { flex: none; width: auto; margin-bottom: var(--pico-spacing); }
+.tag-filter { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: var(--pico-spacing); }
+.tag-filter .tag-chip { margin: 0; padding: 0.15rem 0.55rem; cursor: pointer; }
+.tag-filter .tag-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.tag-filter .tag-chip:has(input:checked) { background: var(--jc-ink); border-color: var(--jc-ink); color: var(--jc-paper); }
+.tag-filter .tag-chip:has(input:focus-visible) { outline: 2px solid var(--pico-primary-focus); outline-offset: 2px; }
+/* Pico styles `input + small` as a block help line, and the count follows the hidden checkbox. */
+.tag-filter .tag-chip small { display: inline; width: auto; margin: 0 0 0 0.15rem; color: inherit; opacity: 0.7; font-weight: 400; }
+h1.prep-prompt { font-size: 1.8rem; }
+.prep-notes { margin-top: 0; padding-top: 0; border-top: 0; }
+.recorder { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: var(--pico-spacing); }
+.recorder small { flex: 1 1 100%; }
+.record-btn { display: inline-flex; align-items: center; gap: 0.5rem; width: auto; margin: 0; }
+.rec-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--jc-rejected); box-shadow: 0 0 0 2px var(--jc-card); }
+.recording .record-btn { background: var(--jc-rejected); border-color: var(--jc-rejected); color: #fff; }
+.recording .rec-dot { background: #fff; animation: rec-pulse 1.2s ease-in-out infinite; }
+@keyframes rec-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .recording .rec-dot { animation: none; } }
+.rec-timer { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--jc-muted); }
+.recording .rec-timer { color: var(--jc-rejected); }
+.answers li.best { border-left: 3px solid var(--jc-brass); padding-left: 0.6rem; }
+.answers audio { display: block; width: 100%; height: 2.25rem; margin: 0.4rem 0; }
+.answer-body { white-space: pre-wrap; }
+button.link.star { font-size: 1.1rem; line-height: 1; color: var(--jc-brass-text); }
+
 /* Easter egg: the cannon duel (static/cannon-game.js), opened by double-clicking the logo. */
 .cannon-game > article { width: 100%; max-width: 860px; }
 .cannon-game canvas { display: block; width: 100%; height: auto; border: 1px solid var(--jc-rule); border-radius: var(--pico-border-radius); }

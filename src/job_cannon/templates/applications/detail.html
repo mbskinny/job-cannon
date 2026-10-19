@@ -77,6 +77,23 @@
       <p class="muted">No base letters yet. <a href="/cover-letters/new">Create one</a> to start drafts here.</p>
       {% endif %}
     </article>
+
+    <article id="prep">
+      <header><h2>Interview prep</h2></header>
+      {% if prep_answers %}
+      <ul class="plain">
+        {% for a in prep_answers %}
+        <li>
+          <a href="/prep/{{ a.question_id }}#answer-{{ a.id }}">{{ a.prompt }}</a>{% if a.best %} <span title="Best answer">★</span>{% endif %}<br>
+          <small class="muted">{{ 'Recorded' if a.mode == 'voice' else 'Typed' }} · {{ a.created_at[:10] }}{% if a.body %} · {{ a.body|truncate(90) }}{% endif %}</small>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No practice answers for this application yet.</p>
+      {% endif %}
+      <a href="/prep?application={{ app.id }}">Practise questions for {{ app.company_name }} →</a>
+    </article>
   </div>
 
   <div>

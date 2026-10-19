@@ -17,7 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from job_cannon import db
 from job_cannon.config import Config
-from job_cannon.repo import applications, attachments, interactions
+from job_cannon.repo import applications, attachments, interactions, prep
 
 PKG_DIR = Path(__file__).resolve().parent.parent
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "testserver"]
@@ -30,6 +30,8 @@ templates.env.globals.update(
     INTEREST_LABELS=applications.INTEREST_LABELS,
     ATTACHMENT_KINDS=attachments.KIND_LABELS,
     INTERACTION_KINDS=interactions.KINDS,
+    ANSWER_MODES=prep.ANSWER_MODES,
+    TRANSCRIPT_STATUSES=prep.TRANSCRIPT_STATUSES,
 )
 
 
@@ -70,6 +72,7 @@ def create_app(cfg: Config) -> FastAPI:
     cfg.ensure_dirs()
     connection = db.connect(cfg.db_path)
     db.migrate(connection)
+    prep.fail_pending(connection)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -96,9 +99,10 @@ def create_app(cfg: Config) -> FastAPI:
 
     from job_cannon.web.routes import applications as r_apps
     from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files
+    from job_cannon.web.routes import prep as r_prep
     from job_cannon.web.routes import interactions as r_interactions
 
-    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters):
+    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, r_prep):
         app.include_router(module.router)
 
     return app

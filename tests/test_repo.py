@@ -216,3 +216,44 @@ def test_interest_level(conn):
     for bad in ("0", "6", "high"):
         with pytest.raises(ValueError):
             applications.update(conn, b, {"interest": bad})
+
+
+def test_prep_tags_parsed_and_filtered(conn):
+    from job_cannon.repo import prep
+
+    assert prep.parse_tags(" Behavioral,  team  work,behavioral,, ") == ["behavioral", "team work"]
+    a = prep.create_question(conn, "Tell me about a conflict.", tags="behavioral, conflict")
+    b = prep.create_question(conn, "Describe a system you built.", notes="the billing rewrite", tags=["experience"])
+    prep.create_question(conn, "Tell me about yourself.", tags="intro")
+    assert [r["id"] for r in prep.list_questions(conn, tags=["behavioral", "conflict"])] == [a]
+    assert prep.list_questions(conn, tags=["behavioral", "intro"]) == []
+    assert [r["id"] for r in prep.list_questions(conn, q="billing")] == [b]
+    assert prep.get_question(conn, a)["tags"] == "behavioral,conflict"
+    assert prep.random_question_id(conn, tags=["experience"]) == b
+    with pytest.raises(ValueError):
+        prep.create_question(conn, "  ")
+
+    prep.update_question(conn, a, "Tell me about a conflict.", tags="behavioral")
+    assert "conflict" not in [t["name"] for t in prep.list_tags(conn)]  # orphaned tag removed
+
+
+def test_prep_answers_and_cleanup(conn):
+    from job_cannon.repo import prep
+
+    q = prep.create_question(conn, "Why us?")
+    app_id = applications.create(conn, "Acme", {"role": "Engineer"})
+    prep.add_text_answer(conn, q, "Because.", application_id=str(app_id))
+    v = prep.add_voice_answer(conn, q, stored_name="abc.webm", mime="audio/webm", duration=12.5, status="pending")
+    with pytest.raises(ValueError):
+        prep.add_text_answer(conn, q, " ")
+    assert [a["company_name"] for a in prep.answers_for_application(conn, app_id)] == ["Acme"]
+
+    prep.fail_pending(conn)
+    assert prep.get_answer(conn, v)["transcript_status"] == "failed"
+    prep.set_transcript(conn, v, " hello there ")
+    assert prep.get_answer(conn, v)["body"] == "hello there"
+
+    applications.delete(conn, app_id)
+    assert prep.answers_for_question(conn, q)[-1]["application_id"] is None  # answer kept, link cleared
+    assert prep.delete_question(conn, q) == ["abc.webm"]
+    assert prep.list_tags(conn) == []

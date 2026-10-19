@@ -16,7 +16,8 @@
       <ul><li><a href="/" class="brand" aria-label="Job Cannon">{% include "partials/logo.html" %}<span class="wordmark">Job Cannon</span></a></li></ul>
       {% set path = request.url.path %}
       {% set nav_items = [('/', 'Dashboard'), ('/board', 'Board'), ('/applications', 'Applications'),
-                          ('/contacts', 'Contacts'), ('/cover-letters', 'Cover letters')] %}
+                          ('/contacts', 'Contacts'), ('/cover-letters', 'Cover letters'),
+                          ('/prep', 'Interview prep')] %}
       {% macro nav_link(href, label) -%}
         <a href="{{ href }}" {% if (path == '/' if href == '/' else path.startswith(href)) %}aria-current="page"{% endif %}>{{ label }}</a>
       {%- endmacro %}

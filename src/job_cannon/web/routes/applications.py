@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 
-from job_cannon.repo import applications, attachments, contacts, cover_letters, interactions
+from job_cannon.repo import applications, attachments, contacts, cover_letters, interactions, prep
 from job_cannon.web.app import config, conn, redirect, render
 
 router = APIRouter(prefix="/applications")
@@ -69,6 +69,7 @@ def detail_page(request: Request, app, status_code: int = 200, **extra):
         draft_unfilled=cover_letters.unfilled(draft["body"]) if draft else [],
         letter_templates=cover_letters.list_templates(c),
         has_letterhead=bool(cover_letters.get_letterhead(c)["name"]),
+        prep_answers=prep.answers_for_application(c, app_id),
         **extra,
     )
 

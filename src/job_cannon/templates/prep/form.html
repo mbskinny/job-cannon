@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if question else 'New' }} question{% endblock %}
+{% block content %}
+<h1>{{ 'Edit question' if question else 'New question' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/prep/%d' % question.id if question else '/prep' }}">
+  <label>Question *
+    <textarea name="prompt" rows="2" required {% if not question %}autofocus{% endif %} placeholder="Tell me about a time you…">{{ values.prompt or '' }}</textarea>
+  </label>
+  <label>Tags
+    <input name="tags" value="{{ values.tags or '' }}" list="prep-tags" placeholder="behavioral, leadership" autocomplete="off">
+    <small>Separate tags with commas.{% if all_tags %} In use: {% for t in all_tags %}<code>{{ t.name }}</code> {% endfor %}{% endif %}</small>
+  </label>
+  <datalist id="prep-tags">{% for t in all_tags %}<option value="{{ t.name }}">{% endfor %}</datalist>
+  <label>Notes
+    <textarea name="notes" rows="8" placeholder="Talking points, or a STAR outline: Situation, Task, Action, Result">{{ values.notes or '' }}</textarea>
+  </label>
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="{{ '/prep/%d' % question.id if question else '/prep' }}" role="button" class="secondary outline">Back</a>
+  </div>
+</form>
+{% if question %}
+<form method="post" action="/prep/{{ question.id }}/delete" onsubmit="return confirm('Delete this question and all its answers and recordings? This cannot be undone.')">
+  <button class="outline danger-btn">Delete question</button>
+</form>
+{% endif %}
+{% endblock %}

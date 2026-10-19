@@ -8,6 +8,10 @@ Cover letters can start from named base letters with `{{placeholders}}`. Fill
 them in on the application page (or have Claude Code do it with the
 `tailor-cover-letter` skill), then attach the result as a PDF.
 
+For interview prep, keep a tagged bank of intro, behavioural and experience
+questions. Practise each one by typing an answer or recording it with your
+microphone. Recordings are kept and transcribed on your own machine.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/board-dark.png">
   <img alt="The Job Cannon board: applications as cards in Wishlist, Applied, Screening, Interviewing, Offer, Rejected and Withdrawn columns, with interest stars and next-action due dates" src="docs/board-light.png">
@@ -41,6 +45,11 @@ uv run job-cannon        # opens http://127.0.0.1:8765/
 ```
 
 Options: `--port 9000`, `--no-browser`, `--data-dir PATH`.
+
+To transcribe recorded interview answers, install the optional voice extra:
+`uv sync --extra voice`. It runs Whisper locally (the model, about 150 MB, is
+downloaded once on first use). Set `JOB_CANNON_WHISPER_MODEL` to pick another
+model, e.g. `small.en` for better accuracy or `base` for languages other than English.
 
 ## Your data folder
 

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Interview prep{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Interview prep</h1>
+    <p>Your pitch, behavioural stories and experience questions. Answer by typing or out loud.</p>
+  </hgroup>
+  <a href="/prep/new" role="button">+ New question</a>
+</div>
+{% if total %}
+<form class="filters prep-filters" action="/prep" hx-get="/prep" hx-target="#questions" hx-trigger="input delay:250ms, change" hx-push-url="true">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search questions and notes…" aria-label="Search">
+  {% if application %}<input type="hidden" name="application" value="{{ application }}">{% endif %}
+  <button type="submit" formaction="/prep/random" class="secondary outline" title="Open a random question matching the filters">Random question</button>
+  {% if all_tags %}
+  <fieldset class="tag-filter" aria-label="Filter by tags">
+    {% for t in all_tags %}
+    <label class="tag-chip"><input type="checkbox" name="tag" value="{{ t.name }}" {% if t.name in selected_tags %}checked{% endif %}> {{ t.name }} <small>{{ t.n }}</small></label>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+  <noscript><button>Filter</button></noscript>
+</form>
+<div id="questions">{% include "prep/_questions.html" %}</div>
+{% else %}
+<article>
+  <p>No questions yet. Write your own, or start from a set of common intro, behavioural and experience questions.</p>
+  <form method="post" action="/prep/starter" class="inline"><button type="submit">Add starter questions</button></form>
+</article>
+{% endif %}
+{% endblock %}

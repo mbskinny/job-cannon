@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ question.prompt|truncate(50) }}{% endblock %}
+{% block content %}
+{% set here = '/prep/%d' % question.id %}
+<p><a href="/prep">← All questions</a></p>
+<div class="page-head">
+  <hgroup>
+    <h1 class="prep-prompt">{{ question.prompt }}</h1>
+    <p>{% for t in tags %}<a class="tag" href="/prep?tag={{ t|urlencode }}">{{ t }}</a> {% else %}<span class="muted">No tags</span>{% endfor %}</p>
+  </hgroup>
+  <div class="head-actions">
+    <a href="/prep/random{% if tags %}?{% for t in tags %}tag={{ t|urlencode }}{% if not loop.last %}&amp;{% endif %}{% endfor %}{% endif %}" role="button" class="secondary outline" title="Another question with all the same tags">Next random</a>
+    <a href="{{ here }}/edit" role="button" class="secondary outline">Edit</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <article id="practice">
+      <header><h2>Practise</h2></header>
+      {% if answer_error %}<p class="error" role="alert">{{ answer_error }}</p>{% endif %}
+      <label>For application
+        <select name="application_id" id="answer-application" form="text-answer">
+          <option value="">General (no application)</option>
+          {% for ap in applications %}<option value="{{ ap.id }}" {% if ap.id|string == application|string %}selected{% endif %}>{{ ap.company_name }} — {{ ap.role }}</option>{% endfor %}
+        </select>
+      </label>
+
+      <div class="recorder" data-recorder data-action="{{ here }}/answers/record" data-target="#answer-list" data-application="#answer-application">
+        <button type="button" data-record class="record-btn"><span class="rec-dot" aria-hidden="true"></span> <span data-label>Record answer</span></button>
+        <span class="rec-timer" data-timer aria-live="off">0:00</span>
+        <small class="muted" data-status role="status">
+          {% if voice_available %}Speak your answer; it's transcribed on this computer when you stop.{% else %}Recordings are saved. To get transcripts too, run <code>uv sync --extra voice</code> and restart.{% endif %}
+        </small>
+      </div>
+
+      <form method="post" action="{{ here }}/answers" id="text-answer">
+        <label>…or type it
+          <textarea name="body" rows="8" placeholder="Write your answer…">{{ draft or '' }}</textarea>
+        </label>
+        <button type="submit" class="secondary">Save answer</button>
+      </form>
+    </article>
+
+    <article id="answers">
+      <header><h2>Answers <small class="muted">{{ answers|length }}</small></h2></header>
+      <ul class="timeline answers" id="answer-list">
+        {% for a in answers %}{% include "prep/_answer.html" %}{% endfor %}
+      </ul>
+      {% if not answers %}<p class="muted" data-empty>No answers yet.</p>{% endif %}
+    </article>
+  </div>
+
+  <div>
+    <article>
+      <header><h2>Notes</h2></header>
+      {% if question.notes %}<div class="notes prep-notes">{{ question.notes }}</div>
+      {% else %}<p class="muted">No notes. <a href="{{ here }}/edit">Add talking points</a> or a STAR outline.</p>{% endif %}
+    </article>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/prep-recorder.js" defer></script>{% endblock %}

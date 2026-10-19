@@ -18,7 +18,7 @@ def _create_app(client, **fields):
 
 def test_pages_render_empty(client):
     for path in ["/", "/board", "/applications", "/applications/new", "/contacts", "/contacts/new",
-                 "/cover-letters", "/cover-letters/new"]:
+                 "/cover-letters", "/cover-letters/new", "/prep", "/prep/new"]:
         assert client.get(path).status_code == 200, path
 
 
@@ -236,3 +236,65 @@ def test_cannon_game_asset(client):
     assert '<script src="/static/cannon-game.js"' in client.get("/").text
     resp = client.get("/static/cannon-game.js")
     assert resp.status_code == 200 and "QUESTIONS" in resp.text
+
+
+def test_prep_question_bank_and_text_answer(client):
+    assert "Add starter questions" in client.get("/prep").text
+    client.post("/prep/starter")
+    page = client.get("/prep").text
+    assert "Tell me about yourself." in page and 'value="behavioral"' in page
+
+    assert client.post("/prep", data={"prompt": " "}).status_code == 422
+    resp = client.post("/prep", data={"prompt": "Why did you leave Initech?", "tags": "Motivation, initech"}, follow_redirects=False)
+    q_id = int(re.search(r"/prep/(\d+)$", resp.headers["location"]).group(1))
+    partial = client.get("/prep?tag=initech", headers={"HX-Request": "true"}).text
+    assert "Initech" in partial and "Tell me about yourself" not in partial and "<html" not in partial
+    assert client.get("/prep/random?tag=initech", follow_redirects=False).headers["location"] == f"/prep/{q_id}"
+
+    app_id = _create_app(client)
+    resp = client.post(f"/prep/{q_id}/answers", data={"body": "I wanted to grow.", "application_id": str(app_id)}, follow_redirects=False)
+    assert resp.status_code == 303
+    assert "I wanted to grow." in client.get(f"/prep/{q_id}").text
+    assert "Why did you leave Initech?" in client.get(f"/applications/{app_id}").text
+    assert client.post(f"/prep/{q_id}/answers", data={"body": ""}).status_code == 422
+
+    client.post(f"/prep/{q_id}", data={"prompt": "Why leave Initech?", "tags": "motivation"})
+    assert "Why leave Initech?" in client.get(f"/prep/{q_id}").text
+    client.post(f"/prep/{q_id}/delete")
+    assert client.get(f"/prep/{q_id}").status_code == 404
+
+
+def test_prep_recorded_answer_transcribed(client, cfg, monkeypatch):
+    from job_cannon import transcribe
+
+    monkeypatch.setattr(transcribe, "available", lambda: True)
+    monkeypatch.setattr(transcribe, "transcribe", lambda path: f"I am a fake transcript of {path.suffix}")
+    resp = client.post("/prep", data={"prompt": "Tell me about yourself."}, follow_redirects=False)
+    q_id = resp.headers["location"].rsplit("/", 1)[1]
+
+    resp = client.post(f"/prep/{q_id}/answers/record", data={"duration": "30"},
+                       files={"audio": ("answer.webm", b"\x1aE\xdf\xa3fake", "audio/webm;codecs=opus")})
+    assert resp.status_code == 201 and "Transcribing" in resp.text
+    answer_id = re.search(r'id="answer-(\d+)"', resp.text).group(1)
+    assert len(list(cfg.files_dir.glob("*.webm"))) == 1
+
+    partial = client.get(f"/prep/answers/{answer_id}").text  # background task has run
+    assert "fake transcript of .webm" in partial and "every 2s" not in partial and "14 wpm" in partial
+    audio = client.get(f"/prep/answers/{answer_id}/audio")
+    assert audio.content.endswith(b"fake") and audio.headers["content-type"] == "audio/webm"
+    assert audio.headers["x-content-type-options"] == "nosniff"
+
+    bad = client.post(f"/prep/{q_id}/answers/record", files={"audio": ("x.html", b"<script>", "text/html")})
+    assert bad.status_code == 400
+
+    client.post(f"/prep/answers/{answer_id}/delete")
+    assert list(cfg.files_dir.glob("*.webm")) == []
+
+
+def test_prep_recording_kept_without_voice_extra(client, monkeypatch):
+    from job_cannon import transcribe
+
+    monkeypatch.setattr(transcribe, "available", lambda: False)
+    q_id = client.post("/prep", data={"prompt": "Pitch"}, follow_redirects=False).headers["location"].rsplit("/", 1)[1]
+    resp = client.post(f"/prep/{q_id}/answers/record", files={"audio": ("a.ogg", b"OggS", "audio/ogg")})
+    assert resp.status_code == 201 and "uv sync --extra voice" in resp.text and "<audio" in resp.text

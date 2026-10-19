@@ -1,0 +1,52 @@
+{# One practice answer. A pending transcription polls until it finishes. #}
+{% set pending = a.transcript_status == 'pending' %}
+{% set words = a.body.split()|length %}
+{% set next = next or '/prep/%d#answer-%d' % (a.question_id, a.id) %}
+<li id="answer-{{ a.id }}" class="answer{% if a.best %} best{% endif %}"
+    {% if pending %}hx-get="/prep/answers/{{ a.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  <div class="timeline-head">
+    <form method="post" action="/prep/answers/{{ a.id }}/best" class="inline">
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="link star" title="{{ 'Unmark best answer' if a.best else 'Mark as best answer' }}" aria-pressed="{{ 'true' if a.best else 'false' }}">{{ '★' if a.best else '☆' }}</button>
+    </form>
+    <span class="badge kind">{{ 'Recorded' if a.mode == 'voice' else 'Typed' }}</span>
+    <small class="muted">{{ a.created_at[:16]|replace('T', ' ') }} UTC</small>
+    {% if a.application_id %}<small>· for <a href="/applications/{{ a.application_id }}">{{ a.company_name }} — {{ a.application_role }}</a></small>{% endif %}
+    {% if a.duration_seconds %}<small class="muted">· {{ (a.duration_seconds // 60)|int }}:{{ '%02d'|format((a.duration_seconds % 60)|int) }}</small>{% endif %}
+    {% if words %}<small class="muted">· {{ words }} words{% if a.mode == 'voice' and a.duration_seconds and a.transcript_status == 'done' %}, {{ (words * 60 / a.duration_seconds)|round|int }} wpm{% endif %}</small>{% endif %}
+  </div>
+  {% if a.audio_stored_name %}<audio controls preload="metadata" src="/prep/answers/{{ a.id }}/audio"></audio>{% endif %}
+  {% if pending %}
+  <p class="muted" aria-live="polite">Transcribing…</p>
+  {% elif a.transcript_status == 'failed' %}
+  <div class="warn">Transcription failed.
+    {% if voice_available %}<form method="post" action="/prep/answers/{{ a.id }}/retranscribe" class="inline"><button class="link">Retry</button></form>{% endif %}
+  </div>
+  {% elif a.mode == 'voice' and a.transcript_status == 'none' and not a.body %}
+  <div class="muted"><small>{% if voice_available %}Not transcribed yet. <form method="post" action="/prep/answers/{{ a.id }}/retranscribe" class="inline"><button class="link">Transcribe now</button></form>{% else %}No transcript: install the voice extra (<code>uv sync --extra voice</code>) and restart to transcribe recordings.{% endif %}</small></div>
+  {% elif a.mode == 'voice' and a.transcript_status == 'done' and not a.body %}
+  <p class="muted"><small>No speech was detected in this recording.</small></p>
+  {% endif %}
+  {% if a.body %}<p class="answer-body">{{ a.body }}</p>{% endif %}
+  {% if not pending %}
+  <details>
+    <summary><small>Edit{% if a.mode == 'voice' %} transcript{% endif %}</small></summary>
+    <form method="post" action="/prep/answers/{{ a.id }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <textarea name="body" rows="6" aria-label="Answer text">{{ a.body }}</textarea>
+      <select name="application_id" aria-label="Application">
+        <option value="">General (no application)</option>
+        {% for ap in applications %}<option value="{{ ap.id }}" {% if ap.id == a.application_id %}selected{% endif %}>{{ ap.company_name }} — {{ ap.role }}</option>{% endfor %}
+        {% if a.application_id and a.application_id not in applications|map(attribute='id') %}<option value="{{ a.application_id }}" selected>{{ a.company_name }} — {{ a.application_role }}</option>{% endif %}
+      </select>
+      <div class="timeline-actions">
+        <button type="submit" class="secondary">Save</button>
+      </div>
+    </form>
+    <form method="post" action="/prep/answers/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Delete this answer{{ ' and its recording' if a.audio_stored_name }}?')">
+      <input type="hidden" name="next" value="/prep/{{ a.question_id }}#answers">
+      <button class="link danger">Delete answer</button>
+    </form>
+  </details>
+  {% endif %}
+</li>

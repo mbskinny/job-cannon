@@ -13,6 +13,11 @@ dependencies = [
     "fpdf2>=2.8.9",
 ]
 
+[project.optional-dependencies]
+# Local transcription of recorded interview-prep answers: uv sync --extra voice
+# av<19: PyAV 19 dropped the open() argument faster-whisper 1.2 passes when decoding.
+voice = ["faster-whisper>=1.1", "av<19"]
+
 [project.scripts]
 job-cannon = "job_cannon.cli:main"
 
