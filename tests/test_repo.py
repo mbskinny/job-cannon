@@ -118,6 +118,29 @@ def test_dashboard_follow_ups(conn):
     assert dashboard.follow_ups(conn, today)["today"] == []
 
 
+def test_archive_hides_without_changing_status(conn):
+    today = date(2026, 10, 14)
+    a = applications.create(conn, "Closed Co", {"role": "Eng", "next_action": "Apply", "next_action_due": "2026-10-10"})
+    interactions.create(conn, kind="note", summary="Check", application_id=a, follow_up_due="2026-10-14")
+    applications.set_archived(conn, a, True)
+
+    row = applications.get(conn, a)
+    assert row["archived_at"] and row["status"] == "wishlist"
+    assert len(applications.history(conn, a)) == 1
+    assert applications.list_applications(conn) == []
+    assert [r["id"] for r in applications.list_applications(conn, archived=True)] == [a]
+    assert [r["id"] for r in applications.list_applications(conn, archived=None)] == [a]
+    assert applications.board(conn)["wishlist"] == []
+    assert applications.status_counts(conn)["wishlist"] == 0
+    fu = dashboard.follow_ups(conn, today)
+    assert fu["overdue"] == [] and fu["today"] == []
+
+    applications.set_archived(conn, a, False)
+    assert applications.get(conn, a)["archived_at"] is None
+    assert [r["id"] for r in applications.board(conn)["wishlist"]] == [a]
+    assert len(dashboard.follow_ups(conn, today)["overdue"]) == 1
+
+
 def test_attachment_round_trip_and_cascade_cleanup(conn, cfg):
     app_id = applications.create(conn, "Acme", {"role": "Eng"})
     att = attachments.save(

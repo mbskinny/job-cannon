@@ -15,6 +15,7 @@
     <option value="updated" {% if sort != 'interest' %}selected{% endif %}>Recently updated</option>
     <option value="interest" {% if sort == 'interest' %}selected{% endif %}>Most interested</option>
   </select>
+  <label class="archived-toggle"><input type="checkbox" name="archived" value="1" {% if archived %}checked{% endif %}> Archived</label>
   <noscript><button>Filter</button></noscript>
 </form>
 <div id="rows">{% include "applications/_rows.html" %}</div>

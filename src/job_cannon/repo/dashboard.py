@@ -15,7 +15,7 @@ def follow_ups(conn, today: date | None = None) -> dict[str, list[dict]]:
         f"""
         SELECT a.id, a.role, a.next_action, a.next_action_due, c.name AS company_name
         FROM applications a JOIN companies c ON c.id = a.company_id
-        WHERE a.next_action_due IS NOT NULL AND a.status IN ({active})
+        WHERE a.next_action_due IS NOT NULL AND a.status IN ({active}) AND a.archived_at IS NULL
         """,
         ACTIVE_STATUSES,
     ):
@@ -36,6 +36,7 @@ def follow_ups(conn, today: date | None = None) -> dict[str, list[dict]]:
         LEFT JOIN applications a ON a.id = i.application_id
         LEFT JOIN companies c ON c.id = a.company_id
         WHERE i.follow_up_due IS NOT NULL AND i.follow_up_done = 0
+          AND (a.id IS NULL OR a.archived_at IS NULL)
         """
     ):
         label = " — ".join(x for x in (row["company_name"], row["role"]) if x) or row["contact_name"]

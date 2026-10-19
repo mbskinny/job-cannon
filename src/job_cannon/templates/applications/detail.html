@@ -23,11 +23,19 @@
   </div>
 </div>
 
+{% if app.archived_at %}
+<div class="archived-note" role="status">
+  <span>Archived {{ app.archived_at[:10] }}. It's hidden from the board, dashboard and applications list.</span>
+  <form method="post" action="{{ here }}/unarchive" class="inline"><button class="secondary outline">Unarchive</button></form>
+</div>
+{% endif %}
+
 <div class="detail-grid">
   <div>
     <article>
       <dl class="facts">
         <dt>Status</dt><dd>{{ status_badge(app.status) }}</dd>
+        {% if app.archived_at %}<dt>Archived</dt><dd>{{ app.archived_at[:10] }}</dd>{% endif %}
         {% if app.interest %}<dt>Interest</dt><dd>{{ interest(app.interest) }} {{ INTEREST_LABELS[app.interest] }}</dd>{% endif %}
         {% if app.posting_url %}<dt>Posting</dt><dd><a href="{{ app.posting_url|http_only }}" target="_blank" rel="noopener noreferrer">{{ app.posting_url|truncate(60) }}</a></dd>{% endif %}
         {% if app.applied_on %}<dt>Applied</dt><dd>{{ app.applied_on }}</dd>{% endif %}
@@ -161,9 +169,14 @@
       </ul>
     </article>
 
+    <div class="app-actions">
+    {% if not app.archived_at %}
+    <form method="post" action="{{ here }}/archive" title="Hide from the board, dashboard and list, but keep the record"><button class="secondary outline">Archive</button></form>
+    {% endif %}
     <form method="post" action="{{ here }}/delete" onsubmit="return confirm('Delete this application and its files? This cannot be undone.')">
       <button class="outline danger-btn">Delete application</button>
     </form>
+    </div>
   </div>
 </div>
 {% endblock %}

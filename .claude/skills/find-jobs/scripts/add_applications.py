@@ -22,7 +22,7 @@ from job_cannon.repo import applications
 
 
 def existing(conn) -> list:
-    return applications.list_applications(conn)
+    return applications.list_applications(conn, archived=None)  # archived ones count as duplicates
 
 
 def is_duplicate(rows, company: str, data: dict) -> bool:
@@ -66,7 +66,8 @@ def main() -> int:
 
     if args.list or not args.jobs:
         for r in rows:
-            print(f"{r['id']}\t{r['status']}\t{r['interest'] or '-'}\t{r['company_name']}\t{r['role']}\t{r['posting_url'] or ''}")
+            status = r["status"] + (" (archived)" if r["archived_at"] else "")
+            print(f"{r['id']}\t{status}\t{r['interest'] or '-'}\t{r['company_name']}\t{r['role']}\t{r['posting_url'] or ''}")
         return 0
 
     with open(args.jobs) as f:
