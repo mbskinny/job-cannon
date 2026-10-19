@@ -69,9 +69,13 @@ def list_companies(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def list_applications(
-    conn, status: str | None = None, q: str | None = None, sort: str = "updated"
+    conn, status: str | None = None, q: str | None = None, sort: str = "updated",
+    archived: bool | None = False,
 ) -> list[sqlite3.Row]:
+    """``archived``: False lists active applications, True archived ones, None both."""
     where, params = [], []
+    if archived is not None:
+        where.append("a.archived_at IS NOT NULL" if archived else "a.archived_at IS NULL")
     if status:
         where.append("a.status = ?")
         params.append(status)
@@ -172,6 +176,15 @@ def reorder(conn, status: str, ordered_ids: list[int]) -> None:
                 )
 
 
+def set_archived(conn, app_id: int, archived: bool) -> None:
+    """Archive (hide from board/dashboard/list, keeping the record) or restore."""
+    with conn:
+        conn.execute(
+            "UPDATE applications SET archived_at = ?, updated_at = ? WHERE id = ?",
+            (now() if archived else None, now(), app_id),
+        )
+
+
 def delete(conn, app_id: int) -> list[str]:
     """Delete an application; returns stored attachment names for file cleanup."""
     with conn:
@@ -187,14 +200,14 @@ def delete(conn, app_id: int) -> list[str]:
 
 def board(conn) -> dict[str, list[sqlite3.Row]]:
     columns: dict[str, list[sqlite3.Row]] = {s: [] for s in STATUSES}
-    for row in conn.execute(_SELECT + " ORDER BY a.position, a.id"):
+    for row in conn.execute(_SELECT + " WHERE a.archived_at IS NULL ORDER BY a.position, a.id"):
         columns[row["status"]].append(row)
     return columns
 
 
 def status_counts(conn) -> dict[str, int]:
     counts = {s: 0 for s in STATUSES}
-    for row in conn.execute("SELECT status, COUNT(*) AS n FROM applications GROUP BY status"):
+    for row in conn.execute("SELECT status, COUNT(*) AS n FROM applications WHERE archived_at IS NULL GROUP BY status"):
         counts[row["status"]] = row["n"]
     return counts
 

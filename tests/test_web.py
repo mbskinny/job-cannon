@@ -232,6 +232,21 @@ def test_interest_set_and_shown(client):
     assert client.get("/applications?sort=interest").status_code == 200
 
 
+def test_archive_and_unarchive(client):
+    app_id = _create_app(client, role="Closed Posting")
+    resp = client.post(f"/applications/{app_id}/archive", follow_redirects=False)
+    assert resp.status_code == 303
+    assert "Unarchive" in client.get(f"/applications/{app_id}").text
+    assert "Closed Posting" not in client.get("/applications").text
+    assert "Closed Posting" not in client.get("/board").text
+    assert "Closed Posting" in client.get("/applications?archived=1", headers={"HX-Request": "true"}).text
+
+    client.post(f"/applications/{app_id}/unarchive")
+    assert "Closed Posting" in client.get("/board").text
+    assert "Closed Posting" not in client.get("/applications?archived=1", headers={"HX-Request": "true"}).text
+    assert client.post("/applications/999/archive").status_code == 404
+
+
 def test_cannon_game_asset(client):
     assert '<script src="/static/cannon-game.js"' in client.get("/").text
     resp = client.get("/static/cannon-game.js")

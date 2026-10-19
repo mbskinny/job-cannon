@@ -18,10 +18,14 @@ def _get_or_404(request: Request, app_id: int):
 
 
 @router.get("")
-async def index(request: Request, status: str = "", q: str = "", sort: str = "updated"):
-    rows = applications.list_applications(conn(request), status or None, q.strip() or None, sort)
+async def index(
+    request: Request, status: str = "", q: str = "", sort: str = "updated", archived: str = ""
+):
+    rows = applications.list_applications(
+        conn(request), status or None, q.strip() or None, sort, archived=bool(archived)
+    )
     template = "applications/_rows.html" if request.headers.get("hx-request") else "applications/index.html"
-    return render(request, template, rows=rows, status=status, q=q, sort=sort)
+    return render(request, template, rows=rows, status=status, q=q, sort=sort, archived=bool(archived))
 
 
 @router.get("/new")
@@ -123,6 +127,20 @@ async def set_interest(request: Request, app_id: int):
         applications.update(conn(request), app_id, {"interest": form.get("interest", "")})
     except ValueError as exc:
         raise HTTPException(400, str(exc))
+    return redirect(f"/applications/{app_id}")
+
+
+@router.post("/{app_id}/archive")
+async def archive(request: Request, app_id: int):
+    _get_or_404(request, app_id)
+    applications.set_archived(conn(request), app_id, True)
+    return redirect(f"/applications/{app_id}")
+
+
+@router.post("/{app_id}/unarchive")
+async def unarchive(request: Request, app_id: int):
+    _get_or_404(request, app_id)
+    applications.set_archived(conn(request), app_id, False)
     return redirect(f"/applications/{app_id}")
 
 
