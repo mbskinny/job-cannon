@@ -155,9 +155,11 @@
   function newGame() {
     gameId++;
     makeTerrain();
+    // Each cannon sits 40–220 px in from its edge, so they end up 360–720 px apart.
+    const inset = () => 40 + Math.floor(Math.random() * 181);
     cannons = [
-      { x: 70, dir: 1, angle: 45, power: 60, color: colors.p1, name: isCpu() ? "You" : "Player 1", trail: null },
-      { x: W - 70, dir: -1, angle: 45, power: 60, color: colors.p2, name: isCpu() ? "Computer" : "Player 2", trail: null },
+      { x: inset(), dir: 1, angle: 45, power: 60, color: colors.p1, name: isCpu() ? "You" : "Player 1", trail: null },
+      { x: W - inset(), dir: -1, angle: 45, power: 60, color: colors.p2, name: isCpu() ? "Computer" : "Player 2", trail: null },
     ];
     for (const c of cannons) { flatten(c.x); c.y = restY(c.x); c.alive = true; }
     turn = Math.random() < 0.5 ? 0 : 1;
