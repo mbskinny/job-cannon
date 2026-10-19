@@ -1,7 +1,7 @@
 # Job search profile
 
-Read by the `find-jobs` and `tailor-cover-letter` skills. Copy this file to
-`.claude/job-search.local.md` (gitignored) and fill it in.
+Read by the `find-jobs`, `tailor-cover-letter` and `answer-application-question`
+skills. Copy this file to `.claude/job-search.local.md` (gitignored) and fill it in.
 
 ## Résumé
 
