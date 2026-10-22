@@ -62,6 +62,7 @@ Default location is `~/JobCannon` (override with `--data-dir` or the
   files/           # uploaded attachments
   profiles.json    # only once there's more than one profile
   job-search.md    # your résumé location and notes, for the Claude skills
+  resume.pdf       # an uploaded résumé, if any
   profiles/alex/   # another person's jobcannon.db, files/ and job-search.md
 ```
 
@@ -78,7 +79,9 @@ From the command line, `uv run job-cannon profiles` lists them,
 `uv run job-cannon profiles use alex` switches, and `--profile alex` picks one
 for a single command (for example `uv run job-cannon backup --profile alex`).
 The Claude skills use the active profile and read that person's résumé
-details from `job-search.md` in their profile folder.
+details from `job-search.md` in their profile folder. Edit it from the profile
+menu → **Job search notes**, where you can also upload a résumé (PDF, Word,
+OpenDocument, text or Markdown).
 
 Each profile can also have a **sector** (Software engineering or Teaching for
 now), set on the Profiles page or with `uv run job-cannon profiles sector alex teaching`.

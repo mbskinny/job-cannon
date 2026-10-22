@@ -209,3 +209,97 @@ def test_sector_web_and_cli(client, cfg, capsys):
     assert json.loads(capsys.readouterr().out.split("\n", 1)[1])["sector"] == "software"
     client.post("/prep/starter")
     assert "production incident" in client.get("/prep").text
+
+
+# --- job-search notes and résumé ------------------------------------------
+
+def _docx(path, *paragraphs):
+    body = "".join(f"<w:p><w:r><w:t>{p}</w:t></w:r></w:p>" for p in paragraphs)
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("word/document.xml", f'<w:document xmlns:w="x"><w:body>{body}</w:body></w:document>')
+    return path
+
+
+def test_job_search_round_trip(tmp_path):
+    path = tmp_path / "job-search.md"
+    assert profiles.read_job_search(path) == profiles.JobSearch()
+    # The format written by hand before the editor existed.
+    path.write_text(
+        "# Job search profile\n\nRead by the skills.\n\n## Résumé\n\nhttps://example.com/cv\n\n"
+        "## Notes\n\nRemote across Europe.\nNo agencies.\n\n## Targets\n\n- Acme\n"
+    )
+    js = profiles.read_job_search(path)
+    assert (js.resume, js.notes) == ("https://example.com/cv", "Remote across Europe.\nNo agencies.")
+    assert js.extra == "## Targets\n\n- Acme"
+
+    profiles.write_job_search(path, " resume.pdf ", "Tuscany only.\r\n", js.extra)
+    again = profiles.read_job_search(path)
+    assert again == profiles.JobSearch("resume.pdf", "Tuscany only.", "## Targets\n\n- Acme")
+    with pytest.raises(ValueError):
+        profiles.write_job_search(path, "", "x\n## Sneaky heading")
+    with pytest.raises(ValueError):
+        profiles.write_job_search(path, "", "x" * (profiles.MAX_NOTES_CHARS + 1))
+
+
+def test_resume_text_and_resolve(tmp_path):
+    assert profiles.resume_text(_docx(tmp_path / "cv.docx", "Gixi Rossi", "Docente A022 &amp; sostegno")) == \
+        "Gixi Rossi\nDocente A022 & sostegno"
+    assert profiles.resolve_resume(tmp_path, "resume.pdf") == str(tmp_path.resolve() / "resume.pdf")
+    assert profiles.resolve_resume(tmp_path, "HTTPS://example.com/cv") == "HTTPS://example.com/cv"
+    assert profiles.resolve_resume(tmp_path, "  ") is None
+
+
+def test_job_search_page(client, cfg):
+    client.post("/profiles", data={"name": "Gixi", "sector": "teaching"})
+    page = client.get("/profiles/gixi/job-search").text
+    assert "classi di concorso" in page and "Job search notes" in page
+
+    # Editing another (non-active) profile's notes only touches that folder.
+    client.post("/profiles/default/switch")
+    resp = client.post("/profiles/gixi/job-search", data={"resume": "https://example.com/cv", "notes": "Prato"},
+                       follow_redirects=False)
+    assert resp.status_code == 303
+    gixi_dir = cfg.data_dir / "profiles" / "gixi"
+    assert "Prato" in (gixi_dir / "job-search.md").read_text()
+    assert not (cfg.data_dir / "job-search.md").exists()
+    assert "Saved." in client.get("/profiles/gixi/job-search?saved=1").text
+    assert client.post("/profiles/gixi/job-search", data={"notes": "x" * 60_000}).status_code == 422
+    assert client.get("/profiles/nobody/job-search").status_code == 404
+
+
+def test_resume_upload(client, cfg, tmp_path, capsys):
+    root = cfg.data_dir
+    client.post("/profiles/default/job-search", data={"resume": "", "notes": "Keep me"})
+    resp = client.post("/profiles/default/resume", files={"file": ("My CV.pdf", b"%PDF-1.4 cv", "application/pdf")},
+                       follow_redirects=False)
+    assert resp.status_code == 303
+    js = profiles.read_job_search(root / "job-search.md")
+    assert (js.resume, js.notes) == ("resume.pdf", "Keep me")
+    resp = client.get("/profiles/default/resume")
+    assert resp.content == b"%PDF-1.4 cv" and resp.headers["x-content-type-options"] == "nosniff"
+    assert resp.headers["content-disposition"].startswith("inline")
+
+    cli.main(["--data-dir", str(root), "profiles", "--json"])
+    assert json.loads(capsys.readouterr().out)["resume"] == str((root / "resume.pdf").resolve())
+
+    # A .docx replaces the PDF, and resume-text reads it.
+    docx = _docx(tmp_path / "cv.docx", "Insegnante")
+    client.post("/profiles/default/resume", files={"file": ("cv.docx", docx.read_bytes(), "application/octet-stream")})
+    assert not (root / "resume.pdf").exists() and (root / "resume.docx").exists()
+    cli.main(["--data-dir", str(root), "resume-text"])
+    assert capsys.readouterr().out.strip() == "Insegnante"
+    assert client.get("/profiles/default/resume").headers["content-disposition"].startswith("attachment")
+
+    # Backups carry the notes and the résumé.
+    zip_path = cli.backup(profiles.get(root, "default").config(root), tmp_path / "bk")
+    with zipfile.ZipFile(zip_path) as zf:
+        assert {"job-search.md", "resume.docx"} <= set(zf.namelist())
+
+    assert client.post("/profiles/default/resume", files={"file": ("x.exe", b"MZ", "application/octet-stream")}).status_code == 422
+    assert client.post("/profiles/default/resume", files={"file": ("empty.pdf", b"", "application/pdf")}).status_code == 422
+    assert (root / "resume.docx").exists()  # a rejected upload keeps the old one
+
+    client.post("/profiles/default/resume/delete")
+    assert profiles.resume_file(root) is None
+    assert profiles.read_job_search(root / "job-search.md") == profiles.JobSearch("", "Keep me")
+    assert client.get("/profiles/default/resume").status_code == 404

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Job search notes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Job search notes{% if profiles|length > 1 %}: {{ target.name }}{% endif %}</h1>
+    <p>Where to find {{ 'your' if target.id == profile.id else target.name ~ "'s" }} résumé, and what it doesn't say.
+      Claude's skills (finding jobs, cover letters, application questions) read this.</p>
+  </hgroup>
+</div>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% elif saved %}<p class="saved" role="status">Saved.</p>{% endif %}
+
+<article>
+  <header><h2>Résumé</h2></header>
+  {% if resume %}
+  <p>Uploaded: <a href="/profiles/{{ target.id }}/resume" target="_blank" rel="noopener">{{ resume.name }}</a>
+    <span class="muted">({{ [1, (resume.stat().st_size / 1024)|round|int]|max }} KB)</span></p>
+  <form method="post" action="/profiles/{{ target.id }}/resume/delete" class="inline">
+    <button type="submit" class="link danger">Remove uploaded résumé</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/profiles/{{ target.id }}/resume" enctype="multipart/form-data" class="profile-row">
+    <input type="file" name="file" required accept=".pdf,.docx,.odt,.txt,.md" aria-label="Résumé file">
+    <button type="submit" class="secondary">{{ 'Replace' if resume else 'Upload' }}</button>
+  </form>
+  <p class="muted">PDF, Word (.docx), OpenDocument (.odt), text or Markdown, up to 20 MB. Kept in the profile folder and included in backups.</p>
+</article>
+
+<article>
+  <form method="post" action="/profiles/{{ target.id }}/job-search">
+    <label>Résumé location
+      <input name="resume" value="{{ values.resume }}" placeholder="https://… or a file path">
+      <small>A web address, or a file. After an upload this is the uploaded file's name.</small>
+    </label>
+    <label>Notes
+      <textarea name="notes" rows="10" placeholder="{{ hint }}">{{ values.notes }}</textarea>
+      <small>Sector: {{ target.sector_label }} (change it on the <a href="/profiles">Profiles</a> page), which picks the guide the skills follow for the whole field.</small>
+    </label>
+    {% if values.extra %}<p class="muted">This file also has other sections written by hand; saving keeps them.</p>{% endif %}
+    <div class="form-actions">
+      <button type="submit">Save</button>
+      <a href="/profiles" role="button" class="secondary outline">Profiles</a>
+    </div>
+  </form>
+  <p class="muted">Saved as <code>{{ path }}</code></p>
+</article>
+{% endblock %}

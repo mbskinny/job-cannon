@@ -1,16 +1,19 @@
 # Job search profile
 
 Read by the `find-jobs`, `tailor-cover-letter` and `answer-application-question`
-skills. Each Job Cannon profile has its own copy: save it as `job-search.md` in the
-profile's data folder (`uv run job-cannon profiles --json` prints the path) and fill
-it in. The first profile may use `.claude/job-search.local.md` (gitignored) instead.
+skills. Each Job Cannon profile has its own copy, `job-search.md` in the profile's
+data folder. The easiest way to fill it in is the app's Job search notes page (profile
+menu → Job search notes), which can also store an uploaded résumé. This file shows
+the format for editing by hand. The first profile may use `.claude/job-search.local.md`
+(gitignored) instead.
 
 ## Résumé
 
 https://example.com/cv
 
-A URL to fetch, or a path to a local file (PDF, Markdown, text). It is the
-source of truth for facts about you.
+A URL to fetch, or a path to a local file (PDF, Word, OpenDocument, Markdown, text).
+A relative path is relative to the profile's data folder. It is the source of truth
+for facts about you.
 
 ## Notes
 

@@ -24,7 +24,7 @@
     </form>
     {% endif %}
   </header>
-  <p class="muted">Data folder: <code>{{ folders[p.id] }}</code></p>
+  <p class="muted">Data folder: <code>{{ folders[p.id] }}</code> · <a href="/profiles/{{ p.id }}/job-search">Job search notes</a></p>
   <form method="post" action="/profiles/{{ p.id }}/sector" class="profile-row">
     <select name="sector" aria-label="Job sector for {{ p.name }}">
       {{ sector_options(p.sector) }}

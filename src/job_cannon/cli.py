@@ -1,4 +1,4 @@
-"""Command line entry point: ``job-cannon [serve|backup|profiles]``."""
+"""Command line entry point: ``job-cannon [serve|backup|profiles|resume-text]``."""
 
 import argparse
 import json
@@ -44,7 +44,7 @@ def serve(root: Path, profile: str | None, host: str, port: int, open_browser: b
 
 
 def backup(cfg: Config, out_dir: Path, label: str | None = None) -> Path:
-    """Zip the database (consistent snapshot), all attachments and the job-search notes.
+    """Zip the database (consistent snapshot), all attachments, the job-search notes and résumé.
 
     ``label`` (a profile id) goes in the file name, for one zip per profile.
     """
@@ -60,9 +60,8 @@ def backup(cfg: Config, out_dir: Path, label: str | None = None) -> Path:
             db.backup_to(conn, snapshot)
             with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
                 zf.write(snapshot, DB_NAME)
-                notes = cfg.data_dir / profiles.JOB_SEARCH_FILE
-                if notes.is_file():
-                    zf.write(notes, profiles.JOB_SEARCH_FILE)
+                for extra in profiles.profile_files(cfg.data_dir):
+                    zf.write(extra, extra.name)
                 if cfg.files_dir.exists():
                     for f in sorted(cfg.files_dir.iterdir()):
                         if f.is_file():
@@ -73,6 +72,8 @@ def backup(cfg: Config, out_dir: Path, label: str | None = None) -> Path:
 
 
 def profile_info(root: Path, profile: profiles.Profile) -> dict:
+    data_dir = profile.config(root).data_dir
+    notes = profiles.read_job_search(data_dir / profiles.JOB_SEARCH_FILE)
     return {
         "id": profile.id,
         "name": profile.name,
@@ -80,6 +81,7 @@ def profile_info(root: Path, profile: profiles.Profile) -> dict:
         "sector_label": profile.sector_label,
         "data_dir": str(profile.config(root).data_dir),
         "job_search_file": str(profile.job_search_file(root)),
+        "resume": profiles.resolve_resume(data_dir, notes.resume),
     }
 
 
@@ -110,6 +112,23 @@ def profiles_command(root: Path, selected: profiles.Profile, args) -> None:
             print(f"{mark} {p.id}\t{p.name}\t{p.sector_label}\t{p.config(root).data_dir}")
 
 
+def resume_text_command(root: Path, profile: profiles.Profile) -> None:
+    data_dir = profile.config(root).data_dir
+    resume = profiles.resolve_resume(data_dir, profiles.read_job_search(data_dir / profiles.JOB_SEARCH_FILE).resume)
+    if resume is None:
+        raise SystemExit(f"No résumé set for {profile.name}. Add one on the Job search notes page.")
+    path = Path(resume)
+    if resume.startswith(("http://", "https://")) or path.suffix.lower() == ".pdf":
+        print(resume)  # fetch the URL or read the PDF directly
+        return
+    if not path.is_file():
+        raise SystemExit(f"Résumé file not found: {path}")
+    try:
+        print(profiles.resume_text(path))
+    except (ValueError, KeyError, zipfile.BadZipFile) as exc:
+        raise SystemExit(f"Can't read {path.name}: {exc}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="job-cannon", description="Local job-search manager.")
     parser.add_argument(
@@ -136,8 +155,12 @@ def main(argv: list[str] | None = None) -> None:
     p_profiles.add_argument("value", nargs="?")
     p_profiles.add_argument("--json", action="store_true", help="print the active (or --profile) profile as JSON")
 
+    p_resume = sub.add_parser(
+        "resume-text", help="print the profile's résumé as text (.docx/.odt/.txt/.md; prints the URL or PDF path otherwise)"
+    )
+
     # Accept --data-dir and --profile after the subcommand too (job-cannon serve --data-dir X).
-    for p in (p_serve, p_backup, p_profiles):
+    for p in (p_serve, p_backup, p_profiles, p_resume):
         p.add_argument("--data-dir", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
         p.add_argument("--profile", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
 
@@ -151,6 +174,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "profiles":
         profiles_command(root, selected, args)
+    elif args.command == "resume-text":
+        resume_text_command(root, selected)
     elif args.command == "backup":
         chosen = profiles.load(root).profiles if args.all else [selected]
         for p in chosen:
