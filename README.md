@@ -61,6 +61,7 @@ Default location is `~/JobCannon` (override with `--data-dir` or the
   jobcannon.db     # everything structured (SQLite)
   files/           # uploaded attachments
   profiles.json    # only once there's more than one profile
+  job-search.md    # your résumé location and notes, for the Claude skills
   profiles/alex/   # another person's jobcannon.db, files/ and job-search.md
 ```
 
