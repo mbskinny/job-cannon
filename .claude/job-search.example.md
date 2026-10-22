@@ -1,7 +1,9 @@
 # Job search profile
 
 Read by the `find-jobs`, `tailor-cover-letter` and `answer-application-question`
-skills. Copy this file to `.claude/job-search.local.md` (gitignored) and fill it in.
+skills. Each Job Cannon profile has its own copy: save it as `job-search.md` in the
+profile's data folder (`uv run job-cannon profiles --json` prints the path) and fill
+it in. The first profile may use `.claude/job-search.local.md` (gitignored) instead.
 
 ## Résumé
 

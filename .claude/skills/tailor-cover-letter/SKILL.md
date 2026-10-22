@@ -9,6 +9,8 @@ The user keeps **base letters** in Job Cannon (Cover letters page): their own pr
 
 ## 1. Find the application
 
+Run `uv run job-cannon profiles --json` to get the active Job Cannon profile. Several people can share the install, each with their own tracker and résumé, so say which profile (`name`) you're working in. If the user means someone else, pass `--profile <id>` to every script below, and to `profiles --json`.
+
 ```sh
 uv run python .claude/skills/find-jobs/scripts/add_applications.py --list
 uv run python .claude/skills/tailor-cover-letter/scripts/cover_letter.py context <APP_ID>
@@ -20,7 +22,7 @@ If a draft already exists, ask before replacing it, because the user may have ed
 
 ## 2. Gather material
 
-- **Résumé**: its location is in `.claude/job-search.local.md` (WebFetch for a URL, Read for a local file). If that file doesn't exist, ask the user where their résumé is and offer to create it from `.claude/job-search.example.md`. The résumé, plus that file's notes, is the only source of facts about the user.
+- **Résumé**: read the file at `job_search_file` (from `profiles --json`, step 1) for the résumé location and any notes. If it doesn't exist and the profile id is `default`, fall back to `.claude/job-search.local.md`. If neither exists, ask the user where their résumé is and offer to create `job_search_file` from `.claude/job-search.example.md`. Fetch the résumé with WebFetch for a URL, Read for a local file. The résumé, plus that file's notes, is the only source of facts about the user.
 - **Posting**: `posting_url`. Use WebFetch, or for LinkedIn the user's Chrome (claude-in-chrome, new tab, `https://www.linkedin.com/jobs/view/<id>/`). **Read only**: never click Apply, Save, Message, or anything that sends something. If the posting is closed or unreachable, say so and work from the application's notes.
 - The application's `notes`, which often summarize the company, stack and fit.
 

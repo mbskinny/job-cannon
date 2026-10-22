@@ -12,6 +12,8 @@ The arguments may start with a Job Cannon **application id** (a bare integer, or
 
 ## 1. Load the application (if there is one)
 
+Run `uv run job-cannon profiles --json` to get the active Job Cannon profile. Several people can share the install, each with their own tracker and résumé, so say which profile (`name`) you're working in. If the user means someone else, pass `--profile <id>` to every script below, and to `profiles --json`.
+
 If an id was given:
 
 ```sh
@@ -24,7 +26,7 @@ If no id was given but the question or conversation names a company, find it wit
 
 ## 2. Gather material
 
-- **Résumé**: its location is in `.claude/job-search.local.md` (WebFetch for a URL, Read for a local file). If that file doesn't exist, ask the user where their résumé is and offer to create it from `.claude/job-search.example.md`. The résumé, plus that file's notes, is the source of truth for facts about the user.
+- **Résumé**: read the file at `job_search_file` (from `profiles --json`, step 1) for the résumé location and any notes. If it doesn't exist and the profile id is `default`, fall back to `.claude/job-search.local.md`. If neither exists, ask the user where their résumé is and offer to create `job_search_file` from `.claude/job-search.example.md`. Fetch the résumé with WebFetch for a URL, Read for a local file. The résumé, plus that file's notes, is the source of truth for facts about the user.
 - **Posting**: only fetch `posting_url` when the question is about the role or company ("why us", "how does your experience match") and the application notes aren't enough. WebFetch, or for LinkedIn the user's Chrome (claude-in-chrome, new tab, `https://www.linkedin.com/jobs/view/<id>/`). **Read only**: never click Apply or anything that sends something.
 - **Already-written material**: the cover letter draft and any `cover_letter` attachment (Read the PDF path). Keep the answer consistent with what the user has sent or will send, but don't copy whole paragraphs from the letter; forms often go to the same reader.
 - **Interactions**: what a recruiter or interviewer said is often the best evidence for "why this role".

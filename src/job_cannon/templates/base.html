@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Job Cannon{% endblock %} · Job Cannon</title>
+  <title>{% block title %}Job Cannon{% endblock %} · {% if profiles|length > 1 %}{{ profile.name }} · {% endif %}Job Cannon</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/pico.min.css">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/cannon-game.js" defer></script>
+  <script src="/static/profile-guard.js" defer></script>
 </head>
-<body>
+<body data-profile="{{ profile.id }}" hx-headers='{"X-Job-Cannon-Profile": {{ profile.id|tojson }}}'>
   <header class="container-fluid site-header">
     <nav>
       <ul><li><a href="/" class="brand" aria-label="Job Cannon">{% include "partials/logo.html" %}<span class="wordmark">Job Cannon</span></a></li></ul>
@@ -25,6 +26,20 @@
         {# Wide screens show the links inline; narrow ones collapse them into the menu (see .nav-link / .nav-menu in app.css). #}
         {% for href, label in nav_items %}<li class="nav-link">{{ nav_link(href, label) }}</li>{% endfor %}
         <li><a href="/applications/new" role="button" class="nav-cta">+ New</a></li>
+        <li class="profile-menu">
+          <details class="dropdown">
+            <summary aria-label="Profile: {{ profile.name }}" title="Profile"><span>{{ profile.name }}</span></summary>
+            <ul dir="rtl">
+              {% for p in profiles if p.id != profile.id %}
+              <li dir="ltr"><form method="post" action="/profiles/{{ p.id }}/switch">
+                <input type="hidden" name="next" value="{{ request.url.path }}">
+                <button type="submit" class="link">Switch to {{ p.name }}</button>
+              </form></li>
+              {% endfor %}
+              <li dir="ltr"><a href="/profiles">Manage profiles…</a></li>
+            </ul>
+          </details>
+        </li>
         <li class="nav-menu">
           <details class="dropdown">
             <summary aria-label="Menu"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></summary>

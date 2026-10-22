@@ -70,9 +70,11 @@
       body.append("duration", duration.toFixed(1));
       if (appSelect) body.append("application_id", appSelect.value);
       try {
-        const res = await fetch(root.dataset.action, { method: "POST", body });
+        const res = await fetch(root.dataset.action, {
+          method: "POST", body, headers: { "X-Job-Cannon-Profile": document.body.dataset.profile },
+        });
         if (!res.ok) {
-          const detail = await res.json().then((j) => j.detail, () => "");
+          const detail = res.status === 409 ? await res.text() : await res.json().then((j) => j.detail, () => "");
           throw new Error(detail || "HTTP " + res.status);
         }
         list.insertAdjacentHTML("afterbegin", await res.text());

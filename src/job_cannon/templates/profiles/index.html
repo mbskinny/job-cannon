@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Profiles{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Profiles</h1>
+    <p>Each person gets their own applications, contacts, letters and files. Switching changes it for every open tab.</p>
+  </hgroup>
+</div>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+{% for p in profiles %}
+<article class="profile-card">
+  <header class="row-between">
+    <h2>{{ p.name }}{% if p.id == profile.id %} <span class="badge status-offer">Active</span>{% endif %}</h2>
+    {% if p.id != profile.id %}
+    <form method="post" action="/profiles/{{ p.id }}/switch" class="inline">
+      <button type="submit">Switch to {{ p.name }}</button>
+    </form>
+    {% endif %}
+  </header>
+  <p class="muted">Data folder: <code>{{ folders[p.id] }}</code></p>
+  <details>
+    <summary>Rename{% if p.id != profile.id and p.dir != '.' %} or delete{% endif %}</summary>
+    <form method="post" action="/profiles/{{ p.id }}/rename" class="profile-row">
+      <input name="name" value="{{ p.name }}" required aria-label="New name for {{ p.name }}">
+      <button type="submit" class="secondary">Rename</button>
+    </form>
+    {% if p.id != profile.id and p.dir != '.' %}
+    <form method="post" action="/profiles/{{ p.id }}/delete" class="profile-row">
+      <input name="confirm" required placeholder="Type {{ p.name }} to confirm" aria-label="Type {{ p.name }} to confirm deleting it">
+      <button type="submit" class="secondary outline danger-btn">Delete profile and all its data</button>
+    </form>
+    {% endif %}
+  </details>
+</article>
+{% endfor %}
+
+<article>
+  <header><h2>New profile</h2></header>
+  <form method="post" action="/profiles" class="profile-row">
+    <input name="name" required placeholder="Their name" value="{{ new_name or '' }}" aria-label="Profile name">
+    <button type="submit">Create and switch</button>
+  </form>
+</article>
+{% endblock %}

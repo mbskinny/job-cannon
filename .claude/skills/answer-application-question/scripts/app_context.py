@@ -5,25 +5,32 @@ Usage (from the repo root):
 
 Includes the application, its company, linked contacts, the interaction log,
 the cover letter draft and the attachment list (with paths on disk, so a
-résumé or sent cover letter PDF can be read). Data folder resolves the same
-way as the app: --data-dir, then JOB_CANNON_DATA, then ~/JobCannon.
+résumé or sent cover letter PDF can be read). Data folder and profile resolve
+the same way as the app: --data-dir, then JOB_CANNON_DATA, then ~/JobCannon;
+--profile, then JOB_CANNON_PROFILE, then the active profile.
 """
 
 import argparse
 import json
 import sys
 
-from job_cannon import config, db
+from job_cannon import db, profiles
 from job_cannon.repo import applications, attachments, contacts, cover_letters, interactions
 
 
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--data-dir")
+    p.add_argument("--profile")
     p.add_argument("app_id", type=int)
     args = p.parse_args()
 
-    cfg = config.resolve(args.data_dir)
+    try:
+        root, profile = profiles.resolve_profile(args.data_dir, args.profile)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    cfg = profile.config(root)
     if not cfg.db_path.exists():
         print(f"no Job Cannon database at {cfg.db_path}", file=sys.stderr)
         return 1
@@ -38,6 +45,7 @@ def main() -> int:
     company = conn.execute("SELECT * FROM companies WHERE id = ?", (app["company_id"],)).fetchone()
     draft = cover_letters.get_draft(conn, args.app_id)
     out = {
+        "profile": profile.name,
         "application": dict(app),
         "company": dict(company) if company else None,
         "contacts": [dict(r) for r in contacts.for_application(conn, args.app_id)],

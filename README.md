@@ -60,7 +60,24 @@ Default location is `~/JobCannon` (override with `--data-dir` or the
 ~/JobCannon/
   jobcannon.db     # everything structured (SQLite)
   files/           # uploaded attachments
+  profiles.json    # only once there's more than one profile
+  profiles/alex/   # another person's jobcannon.db, files/ and job-search.md
 ```
+
+### Profiles
+
+Several people can share one computer login: open the profile menu in the
+header (it shows the current name) and choose **Manage profiles…** to add one.
+Each profile has its own applications, contacts, cover letters, letterhead,
+interview prep and files. One profile is active at a time for the whole app,
+and the app remembers it between runs. A tab left open on another profile
+refuses to save until you reload it, so nothing lands in the wrong person's data.
+
+From the command line, `uv run job-cannon profiles` lists them,
+`uv run job-cannon profiles use alex` switches, and `--profile alex` picks one
+for a single command (for example `uv run job-cannon backup --profile alex`).
+The Claude skills use the active profile and read that person's résumé
+details from `job-search.md` in their profile folder.
 
 ### Moving to a new computer
 
@@ -68,7 +85,9 @@ Default location is `~/JobCannon` (override with `--data-dir` or the
    ```sh
    uv run job-cannon backup --out ~/Desktop
    ```
-   This writes `jobcannon-backup-YYYYMMDD-HHMMSS.zip`.
+   This writes `jobcannon-backup-<profile>-YYYYMMDD-HHMMSS.zip` for the active
+   profile. Add `--all` for one zip per profile, and unzip each into its own
+   profile folder.
 2. On the new machine, clone this repo, run `uv sync`, and unzip the backup
    into `~/JobCannon` (or anywhere, then point `--data-dir` at it).
 3. `uv run job-cannon`.

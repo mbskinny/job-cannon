@@ -5,7 +5,6 @@ import zipfile
 from fastapi.testclient import TestClient
 
 from job_cannon import cli
-from job_cannon.config import Config
 from job_cannon.web.app import create_app
 
 
@@ -140,7 +139,7 @@ def test_backup_and_portability(client, cfg, tmp_path):
         zf.extractall(moved)
 
     # Simulate opening the copied folder on another computer.
-    with TestClient(create_app(Config(moved))) as other:
+    with TestClient(create_app(moved)) as other:
         page = other.get(f"/applications/{app_id}").text
         assert "Engineer" in page and "cv.pdf" in page
         att_id = re.search(r'/attachments/(\d+)"', page).group(1)
@@ -149,7 +148,7 @@ def test_backup_and_portability(client, cfg, tmp_path):
     # A plain folder copy works too.
     copied = tmp_path / "copied"
     shutil.copytree(cfg.data_dir, copied)
-    with TestClient(create_app(Config(copied))) as other:
+    with TestClient(create_app(copied)) as other:
         assert other.get(f"/applications/{app_id}").status_code == 200
 
 

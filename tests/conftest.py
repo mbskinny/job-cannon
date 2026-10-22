@@ -23,5 +23,5 @@ def conn(cfg):
 
 @pytest.fixture
 def client(cfg):
-    with TestClient(create_app(cfg)) as c:
+    with TestClient(create_app(cfg.data_dir)) as c:
         yield c
