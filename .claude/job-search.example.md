@@ -15,5 +15,11 @@ source of truth for facts about you.
 ## Notes
 
 Anything the skills should know that the résumé doesn't say, for example
-location preferences, citizenship or work permits, roles to avoid, or a
-salary floor. Optional.
+location preferences or commuting radius, citizenship or work permits, roles to
+avoid, or a salary floor. Optional.
+
+Conventions for the whole field (where to search, what makes a posting a fit,
+how letters are written) belong in the sector guide, `.claude/sectors/<sector>.md`,
+not here. Set the profile's sector on the Profiles page or with
+`uv run job-cannon profiles sector <id> <sector>`. Use these notes for what is
+personal, and for exceptions to the guide.

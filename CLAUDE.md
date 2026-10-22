@@ -15,6 +15,7 @@ uv run job-cannon                         # serve at http://127.0.0.1:8765/ and 
 uv run job-cannon serve --no-browser --port 9000 --data-dir /tmp/jc   # dev run against throwaway data
 uv run job-cannon backup --out DIR        # zip of the active profile's DB snapshot + files/ (--profile X, or --all)
 uv run job-cannon profiles [--json]       # list profiles / active profile as JSON; `profiles use NAME` switches
+uv run job-cannon profiles sector NAME teaching   # set a profile's job sector ('' for general)
 uv run pytest                             # all tests
 uv run pytest tests/test_web.py::test_name   # single test
 ```
@@ -37,6 +38,7 @@ Layers, top to bottom:
 Key invariants and conventions:
 
 - **Profiles**: only one is active at a time, for the whole app (switching in one tab switches every tab). Connections are **never closed on a switch**, so a background transcription still writes to the profile it started in. Only deleting a profile closes its connection. After changing `profiles.json`, call `load_profiles(app)`.
+- **Sectors**: each profile has a `sector` (a `profiles.SECTORS` key, or `""` for general), stored in `profiles.json`. It picks the Claude skills' sector guide, `.claude/sectors/<key>.md` (`general.md` when empty), and the extra interview-prep starter questions in `prep.SECTOR_QUESTIONS`. The skills stay sector-neutral and defer to the guide's sections (*Profile cues*, *Search*, *Fit checks*, *Record*, *Writing*), and the person's `job-search.md` holds only personal facts. To add a sector: add it to `SECTORS`, write its guide with those headings (a test checks every sector has one), and optionally add starter questions. `load_profiles` keeps the app's active profile, so a CLI `profiles use` waits for a restart, but a CLI sector change is picked up.
 - **All route handlers must be `async def`.** That keeps them on the event-loop thread so the single shared connection is used without locking (`check_same_thread=False`). A sync `def` handler would run in a threadpool and break this.
 - **Enumerated values are defined twice**, once as Python lists (`applications.STATUSES`, `interactions.KINDS`, `attachments.KINDS`, `prep.ANSWER_MODES`, `prep.TRANSCRIPT_STATUSES`) and once as SQL `CHECK` constraints in the migration. Changing one requires a migration for the other. The Python lists are exposed to every template as Jinja globals in `web/app.py`.
 - **Status changes** go through `applications.create`, `update`, or `reorder`. These append to `status_history` and reset `position` when the status changes. Don't update `status` directly.

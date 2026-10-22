@@ -73,6 +73,8 @@ def profile_info(root: Path, profile: profiles.Profile) -> dict:
     return {
         "id": profile.id,
         "name": profile.name,
+        "sector": profile.sector,
+        "sector_label": profile.sector_label,
         "data_dir": str(profile.config(root).data_dir),
         "job_search_file": str(profile.job_search_file(root)),
     }
@@ -87,13 +89,22 @@ def profiles_command(root: Path, selected: profiles.Profile, args) -> None:
         except ValueError as exc:
             raise SystemExit(str(exc))
         print(f"Active profile: {p.name}. A running app picks this up after a restart.")
+    elif args.action == "sector":
+        if not args.name or args.value is None:
+            choices = ", ".join(profiles.SECTORS)
+            raise SystemExit(f"usage: job-cannon profiles sector NAME SECTOR  (one of: {choices}, or '' for general)")
+        try:
+            p = profiles.set_sector(root, args.name, args.value)
+        except ValueError as exc:
+            raise SystemExit(str(exc))
+        print(f"{p.name}: {p.sector_label}")
     elif args.json:
         print(json.dumps(profile_info(root, selected), indent=2))
     else:
         reg = profiles.load(root)
         for p in reg.profiles:
             mark = "*" if p.id == reg.active else " "
-            print(f"{mark} {p.id}\t{p.name}\t{p.config(root).data_dir}")
+            print(f"{mark} {p.id}\t{p.name}\t{p.sector_label}\t{p.config(root).data_dir}")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -114,9 +125,12 @@ def main(argv: list[str] | None = None) -> None:
     p_backup.add_argument("--out", type=Path, default=Path.cwd(), help="where to write the zip")
     p_backup.add_argument("--all", action="store_true", help="one zip per profile")
 
-    p_profiles = sub.add_parser("profiles", help="list profiles, or switch with: profiles use NAME")
-    p_profiles.add_argument("action", nargs="?", choices=["list", "use"], default="list")
+    p_profiles = sub.add_parser(
+        "profiles", help="list profiles; switch with: profiles use NAME; set a sector with: profiles sector NAME SECTOR"
+    )
+    p_profiles.add_argument("action", nargs="?", choices=["list", "use", "sector"], default="list")
     p_profiles.add_argument("name", nargs="?")
+    p_profiles.add_argument("value", nargs="?")
     p_profiles.add_argument("--json", action="store_true", help="print the active (or --profile) profile as JSON")
 
     # Accept --data-dir and --profile after the subcommand too (job-cannon serve --data-dir X).

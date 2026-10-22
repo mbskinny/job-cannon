@@ -11,7 +11,7 @@ import json
 import os
 import re
 import shutil
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from job_cannon import config as config_mod
@@ -22,12 +22,21 @@ PROFILES_DIR = "profiles"
 ENV_VAR = "JOB_CANNON_PROFILE"
 JOB_SEARCH_FILE = "job-search.md"
 
+# Job sectors a profile can pick. Each has a guide for the skills at
+# .claude/sectors/<key>.md and may have starter questions in prep.SECTOR_QUESTIONS.
+SECTORS = {"software": "Software engineering", "teaching": "Teaching"}
+
 
 @dataclass(frozen=True)
 class Profile:
     id: str
     name: str
     dir: str
+    sector: str = ""  # a SECTORS key, or "" for general
+
+    @property
+    def sector_label(self) -> str:
+        return SECTORS.get(self.sector, "General")
 
     def config(self, root: Path) -> Config:
         return Config((root / self.dir).resolve())
@@ -108,15 +117,22 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "profile"
 
 
-def create(root: Path, name: str) -> Profile:
+def _check_sector(sector: str) -> str:
+    if sector and sector not in SECTORS:
+        raise ValueError(f"Unknown sector {sector!r}")
+    return sector
+
+
+def create(root: Path, name: str, sector: str = "") -> Profile:
     reg = load(root)
     name = _clean_name(reg, name)
+    sector = _check_sector(sector)
     taken = {p.id for p in reg.profiles}
     base = _slug(name)
     pid, n = base, 2
     while pid in taken or (root / PROFILES_DIR / pid).exists():
         pid, n = f"{base}-{n}", n + 1
-    profile = Profile(pid, name, f"{PROFILES_DIR}/{pid}")
+    profile = Profile(pid, name, f"{PROFILES_DIR}/{pid}", sector)
     profile.config(root).ensure_dirs()
     reg.profiles.append(profile)
     save(root, reg)
@@ -128,10 +144,21 @@ def rename(root: Path, key: str, name: str) -> Profile:
     p = reg.find(key)
     if p is None:
         raise ValueError(f"No profile named {key!r}")
-    renamed = Profile(p.id, _clean_name(reg, name, exclude=p.id), p.dir)
-    reg.profiles = [renamed if q.id == p.id else q for q in reg.profiles]
+    return _replace(root, reg, replace(p, name=_clean_name(reg, name, exclude=p.id)))
+
+
+def set_sector(root: Path, key: str, sector: str) -> Profile:
+    reg = load(root)
+    p = reg.find(key)
+    if p is None:
+        raise ValueError(f"No profile named {key!r}")
+    return _replace(root, reg, replace(p, sector=_check_sector(sector)))
+
+
+def _replace(root: Path, reg: Registry, changed: Profile) -> Profile:
+    reg.profiles = [changed if q.id == changed.id else q for q in reg.profiles]
     save(root, reg)
-    return renamed
+    return changed
 
 
 def check_delete(root: Path, key: str) -> Profile:

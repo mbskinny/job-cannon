@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import re
 import zipfile
 
@@ -6,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from job_cannon import cli, profiles
+from job_cannon.repo import prep
 from job_cannon.web.app import create_app
 
 
@@ -154,3 +156,56 @@ def test_cli_profiles_and_backup(cfg, conn, tmp_path, capsys):
     with pytest.raises(SystemExit, match="No profile"):
         cli.main(["--data-dir", str(root), "--profile", "nobody", "profiles", "--json"])
     assert alex.config(root).data_dir.is_dir()
+
+
+# --- sectors --------------------------------------------------------------
+
+SECTOR_GUIDES = Path(__file__).resolve().parents[1] / ".claude" / "sectors"
+
+
+def test_every_sector_has_a_guide():
+    assert (SECTOR_GUIDES / "general.md").is_file()
+    for key in profiles.SECTORS:
+        assert (SECTOR_GUIDES / f"{key}.md").is_file(), key
+    for key in prep.SECTOR_QUESTIONS:
+        assert key in profiles.SECTORS, key
+
+
+def test_sector_on_profiles(tmp_path):
+    root = tmp_path / "jc"
+    # A registry written before sectors existed still loads.
+    root.mkdir()
+    (root / profiles.REGISTRY).write_text(json.dumps(
+        {"active": "default", "profiles": [{"id": "default", "name": "Default", "dir": "."}]}
+    ))
+    assert profiles.active(root).sector == ""
+    assert profiles.active(root).sector_label == "General"
+
+    alex = profiles.create(root, "Alex", "teaching")
+    assert profiles.get(root, "alex").sector == "teaching" == alex.sector
+    assert profiles.set_sector(root, "default", "software").sector_label == "Software engineering"
+    assert profiles.set_sector(root, "default", "").sector == ""
+    with pytest.raises(ValueError):
+        profiles.set_sector(root, "alex", "astronaut")
+    with pytest.raises(ValueError):
+        profiles.create(root, "Sam", "astronaut")
+
+
+def test_sector_web_and_cli(client, cfg, capsys):
+    assert client.post("/profiles", data={"name": "Alex", "sector": "teaching"}).status_code == 200
+    assert client.post("/profiles/default/sector", data={"sector": "software"}, follow_redirects=False).status_code == 303
+    assert client.post("/profiles/default/sector", data={"sector": "nope"}).status_code == 422
+    page = client.get("/profiles").text
+    assert '<option value="teaching" selected>Teaching</option>' in page
+
+    # Starter questions follow the active profile's sector (Alex, teaching).
+    client.post("/prep/starter")
+    page = client.get("/prep").text
+    assert "disruptive class" in page and "production incident" not in page
+
+    # A sector set from the CLI reaches the running app.
+    cli.main(["--data-dir", str(cfg.data_dir), "profiles", "sector", "alex", "software"])
+    cli.main(["--data-dir", str(cfg.data_dir), "profiles", "--json"])
+    assert json.loads(capsys.readouterr().out.split("\n", 1)[1])["sector"] == "software"
+    client.post("/prep/starter")
+    assert "production incident" in client.get("/prep").text

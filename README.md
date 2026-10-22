@@ -79,6 +79,12 @@ for a single command (for example `uv run job-cannon backup --profile alex`).
 The Claude skills use the active profile and read that person's résumé
 details from `job-search.md` in their profile folder.
 
+Each profile can also have a **sector** (Software engineering or Teaching for
+now), set on the Profiles page or with `uv run job-cannon profiles sector alex teaching`.
+The skills follow that sector's guide in `.claude/sectors/` (where to search,
+what makes a posting a fit, how letters are written), and interview prep
+offers starter questions for it.
+
 ### Moving to a new computer
 
 1. On the old machine, make a backup (safe to run while the app is open):

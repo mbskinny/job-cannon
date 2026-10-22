@@ -19,13 +19,17 @@ def _get_or_404(request: Request, profile_id: str) -> profiles.Profile:
 
 def _index(request: Request, status_code: int = 200, **context):
     root = _root(request)
+    load_profiles(request.app)  # pick up changes made from the CLI
     folders = {p.id: p.config(root).data_dir for p in request.app.state.profiles.values()}
-    return render(request, "profiles/index.html", status_code=status_code, folders=folders, **context)
+    return render(
+        request, "profiles/index.html", status_code=status_code, folders=folders, sectors=profiles.SECTORS, **context
+    )
 
 
 def _switch(request: Request, profile_id: str) -> None:
     profiles.set_active(_root(request), profile_id)
     load_profiles(request.app)
+    request.app.state.active = profile_id
     open_profile(request.app, profile_id)
 
 
@@ -38,9 +42,11 @@ async def index(request: Request):
 async def create(request: Request):
     form = await request.form()
     try:
-        profile = profiles.create(_root(request), form.get("name", ""))
+        profile = profiles.create(_root(request), form.get("name", ""), form.get("sector", ""))
     except ValueError as exc:
-        return _index(request, status_code=422, error=str(exc), new_name=form.get("name", ""))
+        return _index(
+            request, status_code=422, error=str(exc), new_name=form.get("name", ""), new_sector=form.get("sector", "")
+        )
     load_profiles(request.app)
     _switch(request, profile.id)
     return redirect("/")
@@ -60,6 +66,18 @@ async def rename(request: Request, profile_id: str):
     form = await request.form()
     try:
         profiles.rename(_root(request), profile_id, form.get("name", ""))
+    except ValueError as exc:
+        return _index(request, status_code=422, error=str(exc))
+    load_profiles(request.app)
+    return redirect("/profiles")
+
+
+@router.post("/{profile_id}/sector")
+async def set_sector(request: Request, profile_id: str):
+    _get_or_404(request, profile_id)
+    form = await request.form()
+    try:
+        profiles.set_sector(_root(request), profile_id, form.get("sector", ""))
     except ValueError as exc:
         return _index(request, status_code=422, error=str(exc))
     load_profiles(request.app)

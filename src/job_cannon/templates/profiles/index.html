@@ -1,10 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Profiles{% endblock %}
+{% macro sector_options(current) -%}
+  <option value="" {% if not current %}selected{% endif %}>General (no sector)</option>
+  {% for key, label in sectors.items() %}<option value="{{ key }}" {% if key == current %}selected{% endif %}>{{ label }}</option>{% endfor %}
+{%- endmacro %}
 {% block content %}
 <div class="page-head">
   <hgroup>
     <h1>Profiles</h1>
-    <p>Each person gets their own applications, contacts, letters and files. Switching changes it for every open tab.</p>
+    <p>Each person gets their own applications, contacts, letters and files. Switching changes it for every open tab.
+      The sector tailors the Claude skills and the interview-prep starter questions.</p>
   </hgroup>
 </div>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
@@ -20,6 +25,12 @@
     {% endif %}
   </header>
   <p class="muted">Data folder: <code>{{ folders[p.id] }}</code></p>
+  <form method="post" action="/profiles/{{ p.id }}/sector" class="profile-row">
+    <select name="sector" aria-label="Job sector for {{ p.name }}">
+      {{ sector_options(p.sector) }}
+    </select>
+    <button type="submit" class="secondary">Set sector</button>
+  </form>
   <details>
     <summary>Rename{% if p.id != profile.id and p.dir != '.' %} or delete{% endif %}</summary>
     <form method="post" action="/profiles/{{ p.id }}/rename" class="profile-row">
@@ -40,6 +51,7 @@
   <header><h2>New profile</h2></header>
   <form method="post" action="/profiles" class="profile-row">
     <input name="name" required placeholder="Their name" value="{{ new_name or '' }}" aria-label="Profile name">
+    <select name="sector" aria-label="Job sector">{{ sector_options(new_sector or '') }}</select>
     <button type="submit">Create and switch</button>
   </form>
 </article>

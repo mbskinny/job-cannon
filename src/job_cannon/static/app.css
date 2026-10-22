@@ -194,7 +194,8 @@
 .profile-menu li form { margin: 0; }
 .profile-stale { padding: 0.6rem 0.9rem; border-left: 3px solid var(--jc-rejected); background: var(--jc-sunken); font-weight: 600; }
 .profile-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0.75rem 0 0; }
-.profile-row input { flex: 1 1 14rem; margin-bottom: 0; }
+.profile-row :is(input, select) { flex: 1 1 14rem; width: auto; margin-bottom: 0; }
+.profile-card .profile-row { margin-bottom: 0.75rem; }
 .profile-row button { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; }
 .profile-card header h2 .badge { vertical-align: middle; }
 @media (max-width: 799.98px) {

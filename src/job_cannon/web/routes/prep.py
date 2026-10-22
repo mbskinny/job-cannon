@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from job_cannon import transcribe
 from job_cannon.repo import applications, prep
-from job_cannon.web.app import config, conn, redirect, render, safe_next
+from job_cannon.web.app import config, conn, load_profiles, redirect, render, safe_next
 
 router = APIRouter(prefix="/prep")
 
@@ -102,7 +102,9 @@ async def create(request: Request):
 
 @router.post("/starter")
 async def add_starter(request: Request):
-    prep.add_starter_questions(conn(request))
+    load_profiles(request.app)  # the sector may have been changed from the CLI
+    state = request.app.state
+    prep.add_starter_questions(conn(request), state.profiles[state.active].sector)
     return redirect("/prep")
 
 

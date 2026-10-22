@@ -12,6 +12,8 @@ from job_cannon.db import now
 ANSWER_MODES = ["text", "voice"]
 TRANSCRIPT_STATUSES = ["none", "pending", "done", "failed"]
 
+# Asked in any field; SECTOR_QUESTIONS adds the ones for a profile's sector
+# (keys are profiles.SECTORS keys).
 STARTER_QUESTIONS = [
     ("Tell me about yourself.", ["intro", "pitch"]),
     ("Walk me through your résumé.", ["intro"]),
@@ -23,12 +25,28 @@ STARTER_QUESTIONS = [
     ("Describe a time you had to deliver under a tight deadline.", ["behavioral", "pressure"]),
     ("Tell me about a time you led a project or initiative without formal authority.", ["behavioral", "leadership"]),
     ("Give an example of a time you received difficult feedback. What did you do with it?", ["behavioral", "growth"]),
-    ("Describe the most complex system you've worked on. What was your part in it?", ["experience", "technical"]),
-    ("Tell me about a hard technical decision you made. What trade-offs did you weigh?", ["experience", "technical"]),
     ("What project are you most proud of, and why?", ["experience"]),
     ("Looking back at a past project, what would you do differently now?", ["experience", "growth"]),
-    ("Tell me about a production incident or difficult bug you handled.", ["experience", "technical"]),
 ]
+
+SECTOR_QUESTIONS = {
+    "software": [
+        ("Describe the most complex system you've worked on. What was your part in it?", ["experience", "technical"]),
+        ("Tell me about a hard technical decision you made. What trade-offs did you weigh?", ["experience", "technical"]),
+        ("Tell me about a production incident or difficult bug you handled.", ["experience", "technical"]),
+    ],
+    "teaching": [
+        ("How do you manage a disruptive class? Give a concrete example.", ["teaching", "classroom"]),
+        ("How do you adapt a lesson for students with different abilities, including students with DSA or BES?", ["teaching", "inclusion"]),
+        ("Describe a lesson that didn't work. What did you change?", ["teaching", "failure"]),
+        ("How do you assess learning, beyond tests and marks?", ["teaching", "assessment"]),
+        ("Tell me about a difficult conversation with a parent. How did you handle it?", ["teaching", "parents"]),
+        ("How do you work with colleagues and the class council (consiglio di classe)?", ["teaching", "teamwork"]),
+        ("How do you use technology in your teaching?", ["teaching", "methods"]),
+        ("Walk me through how you would teach a topic from your subject to this age group.", ["teaching", "methods"]),
+        ("Why do you want to teach at this school, and at this level?", ["teaching", "motivation"]),
+    ],
+}
 
 
 def _opt_id(value) -> int | None:
@@ -149,11 +167,11 @@ def delete_question(conn, question_id: int) -> list[str]:
     return stored
 
 
-def add_starter_questions(conn) -> int:
-    """Add the starter questions not already in the bank; returns how many were added."""
+def add_starter_questions(conn, sector: str = "") -> int:
+    """Add the general and ``sector`` starter questions not already in the bank; returns how many were added."""
     existing = {r[0].casefold() for r in conn.execute("SELECT prompt FROM prep_questions")}
     added = 0
-    for prompt, tags in STARTER_QUESTIONS:
+    for prompt, tags in STARTER_QUESTIONS + SECTOR_QUESTIONS.get(sector, []):
         if prompt.casefold() not in existing:
             create_question(conn, prompt, tags=tags)
             added += 1

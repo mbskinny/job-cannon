@@ -77,10 +77,15 @@ def config(request: Request) -> Config:
 
 
 def load_profiles(app: FastAPI) -> None:
-    """Re-read profiles.json into app state (after any change to it)."""
+    """Re-read profiles.json into app state (after any change to it).
+
+    Keeps the app's active profile unless it is gone: `profiles use` from the
+    CLI only takes effect on the next start, never under an open page.
+    """
     reg = profiles.load(app.state.root)
     app.state.profiles = {p.id: p for p in reg.profiles}
-    app.state.active = reg.active_profile().id
+    if getattr(app.state, "active", None) not in app.state.profiles:
+        app.state.active = reg.active_profile().id
 
 
 def open_profile(app: FastAPI, profile_id: str) -> None:
