@@ -18,7 +18,7 @@
       {% set path = request.url.path %}
       {% set nav_items = [('/', 'Dashboard'), ('/board', 'Board'), ('/applications', 'Applications'),
                           ('/contacts', 'Contacts'), ('/cover-letters', 'Cover letters'),
-                          ('/prep', 'Interview prep')] %}
+                          ('/prep', 'Interview prep'), ('/find-jobs', 'Find jobs')] %}
       {% macro nav_link(href, label) -%}
         <a href="{{ href }}" {% if (path == '/' if href == '/' else path.startswith(href)) %}aria-current="page"{% endif %}>{{ label }}</a>
       {%- endmacro %}

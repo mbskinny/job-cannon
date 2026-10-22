@@ -198,7 +198,7 @@
 .profile-card .profile-row { margin-bottom: 0.75rem; }
 .profile-row button { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; }
 .profile-card header h2 .badge { vertical-align: middle; }
-@media (max-width: 799.98px) {
+@media (max-width: 899.98px) {
   .nav-link { display: none; }
   .nav-menu { display: inline-block; }
 }
@@ -263,6 +263,8 @@ th { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spac
 .stat:hover { border-color: var(--jc-c, var(--jc-withdrawn)); text-decoration: none; }
 .stat-value { font-family: var(--jc-display); font-size: 2.2rem; font-weight: 800; line-height: 1.05; color: var(--jc-c, var(--pico-color)); }
 .stat-label { color: var(--jc-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; }
+.find-jobs-cta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; margin: -0.5rem 0 1.5rem; }
+.find-jobs-cta [role="button"] { margin: 0; }
 .dash-grid, .detail-grid { display: grid; grid-template-columns: 1fr; gap: 0 1.5rem; }
 @media (min-width: 960px) {
   .dash-grid { grid-template-columns: 3fr 2fr; }
@@ -367,3 +369,9 @@ button.link.star { font-size: 1.1rem; line-height: 1; color: var(--jc-brass-text
 .cg-question { text-align: left; }
 .cg-question small { color: var(--jc-muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; }
 .cg-question p { margin: 0.25rem 0 0.5rem; font-family: var(--jc-display); font-size: 1.25rem; color: var(--jc-ink); }
+
+/* Find jobs */
+.find-jobs-notes { margin: 1rem 0 0; font-size: 0.9rem; }
+.search-report { white-space: pre-wrap; margin-bottom: 1rem; }
+.search-steps { margin: 0.5rem 0 1rem; font-size: 0.9rem; color: var(--jc-ink-soft); }
+.search-steps li:last-child { color: var(--pico-color); }

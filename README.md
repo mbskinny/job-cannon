@@ -51,6 +51,23 @@ To transcribe recorded interview answers, install the optional voice extra:
 downloaded once on first use). Set `JOB_CANNON_WHISPER_MODEL` to pick another
 model, e.g. `small.en` for better accuracy or `base` for languages other than English.
 
+### Finding jobs from the app
+
+The **Find jobs** page (and the button on the dashboard) runs the `find-jobs`
+skill without a terminal: Claude reads the profile's résumé and notes, searches
+LinkedIn and job sites in your Chrome, and adds the postings that fit to the
+board as Wishlist, showing its progress as it goes. Nothing is applied for or
+sent. One-time setup on the computer that runs Job Cannon:
+
+1. Install [Claude Code](https://claude.com/claude-code) and sign in (`claude`, then follow the prompts).
+2. Install the Claude in Chrome extension, connect it, and sign in to LinkedIn in that Chrome.
+3. From this repo, run one search interactively (`claude --chrome`, then "find me 2 jobs")
+   and approve any site permissions the extension asks for. A search started
+   from the app can't click those approvals.
+
+Keep Chrome open while a search runs; one usually takes 5–15 minutes, and only
+one runs at a time. `JOB_CANNON_SEARCH_TIMEOUT` (seconds, default 1800) caps it.
+
 ## Your data folder
 
 Default location is `~/JobCannon` (override with `--data-dir` or the

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Job search{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Job search</h1>
+    <p>{{ run.job_count }} jobs{% if run.focus %}, focusing on {{ run.focus }}{% endif %} · started {{ run.started_at[:16]|replace('T', ' ') }} UTC</p>
+  </hgroup>
+  <a href="/find-jobs" role="button" class="secondary outline">New search</a>
+</div>
+{% include "find_jobs/_run.html" %}
+{% endblock %}

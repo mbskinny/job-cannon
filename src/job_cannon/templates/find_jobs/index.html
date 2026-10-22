@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Find jobs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Find jobs</h1>
+    <p>Claude reads your résumé and notes, searches LinkedIn and job sites in your Chrome, checks each posting is still open, and adds the best fits to your board as Wishlist.</p>
+  </hgroup>
+</div>
+
+<article>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  {% if problems %}
+  <p><strong>Before you can search:</strong></p>
+  <ul>
+    {% for message, link in problems %}<li>{{ message }}{% if link %} <a href="{{ link }}">Fix this</a>{% endif %}</li>{% endfor %}
+  </ul>
+  {% elif busy_profile %}
+  <p>A search is running{% if busy_profile.id != profile.id %} for {{ busy_profile.name }}{% endif %}.
+    {% if busy_profile.id == profile.id %}<a href="/find-jobs/runs/{{ busy_run }}">Watch its progress</a>.{% else %}Only one search can run at a time, because they share one Chrome.{% endif %}</p>
+  {% else %}
+  <form method="post" action="/find-jobs">
+    <div class="grid">
+      <label>How many jobs
+        <input type="number" name="job_count" min="1" max="{{ max_jobs }}" value="{{ form.job_count }}" required>
+      </label>
+      <label>Focus <small class="muted">(optional)</small>
+        <input type="text" name="focus" maxlength="300" value="{{ form.focus }}" placeholder="e.g. remote only, part-time, near Bologna">
+      </label>
+    </div>
+    <button type="submit">Find jobs</button>
+  </form>
+  <ul class="find-jobs-notes muted">
+    <li>Keep Chrome open. Claude opens its own tab, browses, and closes it when done.</li>
+    <li>It usually takes 5–15 minutes. You can leave this page and come back.</li>
+    <li>Nothing is applied for or sent. You decide what to do with each job.</li>
+  </ul>
+  {% endif %}
+</article>
+
+{% if last %}
+<article>
+  <header><h2>Last search</h2></header>
+  <p><a href="/find-jobs/runs/{{ last.id }}">{{ last.started_at[:16]|replace('T', ' ') }} UTC</a>
+    · {{ last.job_count }} jobs{% if last.focus %}, {{ last.focus }}{% endif %}
+    · {{ {'running': 'running', 'done': 'finished', 'failed': 'didn’t finish', 'cancelled': 'stopped'}[last.status] }}</p>
+</article>
+{% endif %}
+{% endblock %}

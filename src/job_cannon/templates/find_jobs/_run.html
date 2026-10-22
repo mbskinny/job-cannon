@@ -1,0 +1,41 @@
+{# A search's progress and result. While running it polls itself, naming the profile it belongs to. #}
+{% set running = run.status == 'running' %}
+<div id="search-run" {% if running %}hx-get="/find-jobs/runs/{{ run.id }}?profile={{ run_profile|urlencode }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <article>
+    <header><h2>
+      {% if running %}Searching… <small class="muted">{{ minutes }} min</small>
+      {% elif run.status == 'done' %}Done
+      {% elif run.status == 'cancelled' %}Stopped
+      {% else %}The search didn’t finish{% endif %}
+    </h2></header>
+    {% if running and not live %}
+    <p class="muted">Job Cannon restarted while this was running, so it won’t finish.</p>
+    {% endif %}
+    {% if run.error %}<p class="error" role="alert">{{ run.error }}</p>{% endif %}
+    {% if run.report %}<div class="search-report">{{ run.report }}</div>{% endif %}
+    {% if added %}
+    <h3>Added to your board</h3>
+    <ul class="plain">
+      {% for a in added %}<li><a href="/applications/{{ a.id }}">{{ a.company_name }} — {{ a.role }}</a>{% if a.location %} <small class="muted">· {{ a.location }}</small>{% endif %}</li>{% endfor %}
+    </ul>
+    <p><a href="/board">Open the board</a></p>
+    {% elif run.status == 'done' %}
+    <p class="muted">No new jobs were added this time.</p>
+    {% endif %}
+    {% if steps %}
+    <details {% if running %}open{% endif %}>
+      <summary>What Claude did{% if not running %} ({{ steps|length }} steps){% endif %}</summary>
+      <ol class="search-steps" aria-live="polite">
+        {% for s in steps %}<li>{{ s }}</li>{% endfor %}
+      </ol>
+    </details>
+    {% elif running %}
+    <p class="muted" aria-live="polite">Starting Claude…</p>
+    {% endif %}
+    {% if running and live %}
+    <form method="post" action="/find-jobs/runs/{{ run.id }}/cancel" class="inline">
+      <button type="submit" class="secondary outline">Stop the search</button>
+    </form>
+    {% endif %}
+  </article>
+</div>

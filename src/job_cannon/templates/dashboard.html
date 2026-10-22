@@ -15,6 +15,17 @@
   </a>
 </section>
 
+{% if find_jobs %}
+<section class="find-jobs-cta">
+  <a href="/find-jobs" role="button">Find new jobs</a>
+  <small class="muted">
+    {% if last_search and last_search.status == 'running' %}<a href="/find-jobs/runs/{{ last_search.id }}">A search is running…</a>
+    {% elif last_search %}Last search: <a href="/find-jobs/runs/{{ last_search.id }}">{{ last_search.started_at[:10] }}</a>
+    {% else %}Claude searches LinkedIn and job sites for postings that fit your résumé.{% endif %}
+  </small>
+</section>
+{% endif %}
+
 <div class="dash-grid">
   <article>
     <header><h2>Follow-ups</h2></header>

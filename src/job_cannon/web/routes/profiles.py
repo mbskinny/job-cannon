@@ -101,6 +101,9 @@ async def delete(request: Request, profile_id: str):
         return _index(request, status_code=422, error=f"Type {profile.name!r} to confirm deleting it.")
     try:
         profiles.check_delete(_root(request), profile.id)  # before closing its connection
+        search = request.app.state.search
+        if search is not None and search.running and search.profile_id == profile.id:
+            raise ValueError(f"A job search is running for {profile.name}. Stop it or let it finish first.")
         close_profile(request.app, profile.id)
         profiles.delete(_root(request), profile.id)
     except ValueError as exc:

@@ -17,7 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from job_cannon import db, profiles
 from job_cannon.config import Config
-from job_cannon.repo import applications, attachments, interactions, prep
+from job_cannon.repo import applications, attachments, interactions, prep, search_runs
 
 PKG_DIR = Path(__file__).resolve().parent.parent
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "testserver"]
@@ -101,6 +101,7 @@ def open_profile(app: FastAPI, profile_id: str) -> None:
     connection = db.connect(cfg.db_path)
     db.migrate(connection)
     prep.fail_pending(connection)
+    search_runs.fail_running(connection)
     app.state.conns[profile_id] = connection
 
 
@@ -121,12 +122,15 @@ def create_app(root: Path, profile: str | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         yield
+        if _app.state.search is not None:
+            _app.state.search.stop()
         for connection in _app.state.conns.values():
             connection.close()
 
     app = FastAPI(title="Job Cannon", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.root = root
     app.state.conns = {}
+    app.state.search = None  # the find-jobs run in progress (job_search_run.SearchProcess)
     if profile:
         profiles.set_active(root, profile)
     load_profiles(app)
@@ -165,12 +169,12 @@ def create_app(root: Path, profile: str | None = None) -> FastAPI:
     app.mount("/static", StaticFiles(directory=PKG_DIR / "static"), name="static")
 
     from job_cannon.web.routes import applications as r_apps
-    from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files
+    from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files, find_jobs
     from job_cannon.web.routes import prep as r_prep
     from job_cannon.web.routes import profiles as r_profiles
     from job_cannon.web.routes import interactions as r_interactions
 
-    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, r_prep, r_profiles):
+    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, r_prep, r_profiles, find_jobs):
         app.include_router(module.router)
 
     return app
