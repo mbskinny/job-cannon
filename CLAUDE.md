@@ -13,7 +13,7 @@ uv sync                                   # install deps (incl. dev group: pytes
 uv sync --extra voice                     # also faster-whisper, for transcribing recorded prep answers
 uv run job-cannon                         # serve at http://127.0.0.1:8765/ and open a browser
 uv run job-cannon serve --no-browser --port 9000 --data-dir /tmp/jc   # dev run against throwaway data
-uv run job-cannon backup --out DIR        # zip of the active profile's DB snapshot + files/ (--profile X, or --all)
+uv run job-cannon backup --out DIR        # zip of the active profile's DB snapshot, files/ and job-search.md (--profile X, or --all)
 uv run job-cannon profiles [--json]       # list profiles / active profile as JSON; `profiles use NAME` switches
 uv run job-cannon profiles sector NAME teaching   # set a profile's job sector ('' for general)
 uv run pytest                             # all tests

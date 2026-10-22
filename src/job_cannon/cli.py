@@ -44,7 +44,7 @@ def serve(root: Path, profile: str | None, host: str, port: int, open_browser: b
 
 
 def backup(cfg: Config, out_dir: Path, label: str | None = None) -> Path:
-    """Zip the database (consistent snapshot) and all attachments.
+    """Zip the database (consistent snapshot), all attachments and the job-search notes.
 
     ``label`` (a profile id) goes in the file name, for one zip per profile.
     """
@@ -60,6 +60,9 @@ def backup(cfg: Config, out_dir: Path, label: str | None = None) -> Path:
             db.backup_to(conn, snapshot)
             with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
                 zf.write(snapshot, DB_NAME)
+                notes = cfg.data_dir / profiles.JOB_SEARCH_FILE
+                if notes.is_file():
+                    zf.write(notes, profiles.JOB_SEARCH_FILE)
                 if cfg.files_dir.exists():
                     for f in sorted(cfg.files_dir.iterdir()):
                         if f.is_file():

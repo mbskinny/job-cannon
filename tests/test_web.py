@@ -130,11 +130,13 @@ def test_backup_and_portability(client, cfg, tmp_path):
         files={"file": ("cv.pdf", b"%PDF data", "application/pdf")},
     )
 
+    (cfg.data_dir / "job-search.md").write_text("## Résumé\n\nhttps://example.com/cv\n")
     zip_path = cli.backup(cfg, tmp_path / "backups")
     with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()
         assert "jobcannon.db" in names
         assert any(n.startswith("files/") for n in names)
+        assert "example.com/cv" in zf.read("job-search.md").decode()
         moved = tmp_path / "other-machine"
         zf.extractall(moved)
 
