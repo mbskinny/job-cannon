@@ -332,3 +332,25 @@ def test_prep_recording_kept_without_voice_extra(client, monkeypatch):
     q_id = client.post("/prep", data={"prompt": "Pitch"}, follow_redirects=False).headers["location"].rsplit("/", 1)[1]
     resp = client.post(f"/prep/{q_id}/answers/record", files={"audio": ("a.ogg", b"OggS", "audio/ogg")})
     assert resp.status_code == 201 and "uv sync --extra voice" in resp.text and "<audio" in resp.text
+
+
+def test_port_check_ignores_connections_left_by_a_stopped_server():
+    import socket
+
+    server = socket.socket()
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # as uvicorn does
+    server.bind(("127.0.0.1", 0))
+    server.listen()
+    port = server.getsockname()[1]
+    assert not cli.port_free("127.0.0.1", port)  # something really is listening
+
+    # A browser keeps its connection open; the server closes first and stops,
+    # leaving its side of the connection in FIN-WAIT/TIME_WAIT on the port.
+    client = socket.create_connection(("127.0.0.1", port))
+    conn, _ = server.accept()
+    conn.close()
+    server.close()
+    try:
+        assert cli.port_free("127.0.0.1", port)
+    finally:
+        client.close()

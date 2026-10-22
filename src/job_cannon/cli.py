@@ -16,6 +16,21 @@ from job_cannon import db, profiles
 from job_cannon.config import DB_NAME, FILES_DIR, Config
 
 
+def port_free(host: str, port: int) -> bool:
+    """True unless something is listening on the port.
+
+    SO_REUSEADDR, as uvicorn uses, so connections left over from a copy that
+    just stopped (TIME_WAIT and friends, for up to a minute) don't count.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
 def serve(root: Path, profile: str | None, host: str, port: int, open_browser: bool) -> None:
     import uvicorn
 
@@ -23,14 +38,11 @@ def serve(root: Path, profile: str | None, host: str, port: int, open_browser: b
 
     # Check before opening a browser tab, which would otherwise land on
     # whatever else is already serving this port.
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        try:
-            probe.bind((host, port))
-        except OSError:
-            raise SystemExit(
-                f"Port {port} is already in use (is Job Cannon already running?).\n"
-                f"Stop the other copy, or pick another port: job-cannon serve --port {port + 1}"
-            )
+    if not port_free(host, port):
+        raise SystemExit(
+            f"Port {port} is already in use (is Job Cannon already running?).\n"
+            f"Stop the other copy, or pick another port: job-cannon serve --port {port + 1}"
+        )
 
     app = create_app(root, profile)
     url = f"http://{host}:{port}/"
