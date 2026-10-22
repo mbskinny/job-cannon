@@ -195,7 +195,7 @@ def test_sector_web_and_cli(client, cfg, capsys):
     assert client.post("/profiles", data={"name": "Alex", "sector": "teaching"}).status_code == 200
     assert client.post("/profiles/default/sector", data={"sector": "software"}, follow_redirects=False).status_code == 303
     assert client.post("/profiles/default/sector", data={"sector": "nope"}).status_code == 422
-    page = client.get("/profiles").text
+    page = client.get("/profiles/alex").text
     assert '<option value="teaching" selected>Teaching</option>' in page
 
     # Starter questions follow the active profile's sector (Alex, teaching).
@@ -249,22 +249,53 @@ def test_resume_text_and_resolve(tmp_path):
     assert profiles.resolve_resume(tmp_path, "  ") is None
 
 
-def test_job_search_page(client, cfg):
+def test_settings_page(client, cfg):
     client.post("/profiles", data={"name": "Gixi", "sector": "teaching"})
-    page = client.get("/profiles/gixi/job-search").text
-    assert "classi di concorso" in page and "Job search notes" in page
+    page = client.get("/profiles/gixi").text
+    for section in ('id="details"', 'id="contact"', 'id="resume"', 'id="notes"', "classi di concorso"):
+        assert section in page
+    assert client.get("/profiles/nobody").status_code == 404
+    resp = client.get("/profiles/gixi/job-search", follow_redirects=False)  # the old notes page
+    assert resp.status_code == 303 and resp.headers["location"] == "/profiles/gixi#notes"
 
     # Editing another (non-active) profile's notes only touches that folder.
     client.post("/profiles/default/switch")
     resp = client.post("/profiles/gixi/job-search", data={"resume": "https://example.com/cv", "notes": "Prato"},
                        follow_redirects=False)
-    assert resp.status_code == 303
+    assert resp.headers["location"] == "/profiles/gixi?saved=notes#notes"
     gixi_dir = cfg.data_dir / "profiles" / "gixi"
     assert "Prato" in (gixi_dir / "job-search.md").read_text()
     assert not (cfg.data_dir / "job-search.md").exists()
-    assert "Saved." in client.get("/profiles/gixi/job-search?saved=1").text
+    assert "Saved." in client.get("/profiles/gixi?saved=notes").text
     assert client.post("/profiles/gixi/job-search", data={"notes": "x" * 60_000}).status_code == 422
-    assert client.get("/profiles/nobody/job-search").status_code == 404
+    assert client.post("/profiles/nobody/job-search", data={"notes": ""}).status_code == 404
+
+
+def test_settings_contact_details_go_to_that_profiles_database(client, cfg):
+    client.post("/profiles", data={"name": "Gixi"})
+    client.post("/profiles/default/switch")
+    resp = client.post("/profiles/gixi/contact", follow_redirects=False, data={
+        "name": "Gixi Rossi", "email": "g@example.com", "website": "gixi.it", "linkedin": "linkedin.com/in/gixi"})
+    assert resp.headers["location"] == "/profiles/gixi?saved=contact#contact"
+    page = client.get("/profiles/gixi").text
+    assert 'value="Gixi Rossi"' in page and 'value="gixi.it"' in page and 'value="linkedin.com/in/gixi"' in page
+    assert 'value="Gixi Rossi"' not in client.get("/profiles/default").text
+    # The active profile's Cover letters page shows its own (empty) contact details.
+    assert "No contact details yet" in client.get("/cover-letters").text
+    assert client.post("/profiles/gixi/contact", data={"name": "x" * 300}).status_code == 422
+
+
+def test_details_forms_return_to_the_page_they_came_from(client):
+    client.post("/profiles", data={"name": "Gixi"})
+    back = "/profiles/gixi?saved=details#details"
+    resp = client.post("/profiles/gixi/rename", data={"name": "Gixi R", "next": back}, follow_redirects=False)
+    assert resp.headers["location"] == back
+    resp = client.post("/profiles/gixi/sector", data={"sector": "teaching", "next": back}, follow_redirects=False)
+    assert resp.headers["location"] == back
+    resp = client.post("/profiles/gixi/sector", data={"sector": "nope", "next": back})
+    assert resp.status_code == 422 and 'id="details"' in resp.text
+    resp = client.post("/profiles/gixi/rename", data={"name": "Gixi"}, follow_redirects=False)
+    assert resp.headers["location"] == "/profiles"
 
 
 def test_resume_upload(client, cfg, tmp_path, capsys):

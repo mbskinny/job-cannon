@@ -27,26 +27,22 @@
 <p class="muted">No base letters yet. Create one, then start a draft from any application's page.</p>
 {% endif %}
 
-<article id="letterhead">
-  <header><h2>Letterhead &amp; style</h2></header>
-  <p class="muted">Shown at the top of every cover letter PDF. Leave the name empty for no letterhead.</p>
-  {% if letterhead_error %}<p class="error" role="alert">{{ letterhead_error }}</p>{% elif saved %}<p class="saved" role="status">Saved.</p>{% endif %}
-  <form method="post" action="/cover-letters/letterhead">
-    <div class="grid">
-      <label>Name <input name="name" value="{{ letterhead.name }}"></label>
-      <label>Location <input name="location" value="{{ letterhead.location }}" placeholder="City, Country"></label>
-    </div>
-    <div class="grid">
-      <label>Email <input type="email" name="email" value="{{ letterhead.email }}"></label>
-      <label>Phone <input name="phone" value="{{ letterhead.phone }}"></label>
-    </div>
-    <div class="grid">
-      <label>Website or LinkedIn <input name="website" value="{{ letterhead.website }}" placeholder="linkedin.com/in/you"></label>
-      <label>Accent colour <input type="color" name="accent" value="{{ letterhead.accent }}"></label>
-    </div>
+<article id="letter-style">
+  <header><h2>PDF style</h2></header>
+  {% if style_error %}<p class="error" role="alert">{{ style_error }}</p>{% elif saved %}<p class="saved" role="status">Saved.</p>{% endif %}
+  <form method="post" action="/cover-letters/style">
+    <label>
+      <input type="checkbox" role="switch" name="show_letterhead" value="1" {% if style.show_letterhead %}checked{% endif %}>
+      Show a letterhead with my name and contact details
+    </label>
+    <p class="muted">
+      {% if contact %}{{ contact|join(' · ') }}{% else %}No contact details yet.{% endif %}
+      <a href="/profiles/{{ profile.id }}#contact">{{ 'Edit' if contact else 'Add them' }} in profile settings</a>
+    </p>
+    <label>Accent colour <input type="color" name="accent" value="{{ style.accent }}"></label>
     <div class="form-actions">
       <button type="submit">Save</button>
-      <button type="submit" formaction="/cover-letters/letterhead/preview" formtarget="_blank" class="secondary outline">Preview PDF</button>
+      <button type="submit" formaction="/cover-letters/style/preview" formtarget="_blank" class="secondary outline">Preview PDF</button>
     </div>
   </form>
 </article>

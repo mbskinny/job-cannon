@@ -225,6 +225,8 @@ article > header h2 { font-size: 1.3rem; margin: 0; }
 .table-wrap { overflow-x: auto; }
 th { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--jc-muted); }
 
+#letter-style input[type="color"] { max-width: 8rem; }
+
 /* Button rows: the first button fills the row, the rest keep their natural width and never wrap their label.
    Pico gives submit buttons width:100% and a bottom margin; the margin made flex stretch the sibling link taller,
    so it moves to the row itself. :is() matches the specificity of Pico's button[type=submit] so width:auto wins. */

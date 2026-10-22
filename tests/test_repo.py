@@ -203,14 +203,65 @@ def test_draft_upsert_cascade_and_template_delete(conn):
 
 
 def test_letterhead_defaults_save_and_validation(conn):
-    assert cover_letters.get_letterhead(conn)["name"] == ""
-    assert cover_letters.get_letterhead(conn)["accent"] == cover_letters.DEFAULT_ACCENT
-    cover_letters.save_letterhead(conn, {"name": " Ada ", "email": "a@b.c", "accent": "#AABBCC"})
-    cover_letters.save_letterhead(conn, {"name": "Ada L", "accent": ""})
     lh = cover_letters.get_letterhead(conn)
-    assert lh["name"] == "Ada L" and lh["email"] == "" and lh["accent"] == cover_letters.DEFAULT_ACCENT
+    assert lh["name"] == "" and lh["show_letterhead"] and lh["accent"] == cover_letters.DEFAULT_ACCENT
+    cover_letters.save_contact(conn, {"name": " Ada ", "email": "a@b.c"})
+    cover_letters.save_letter_style(conn, {"show_letterhead": "1", "accent": "#AABBCC"})
+    cover_letters.save_contact(conn, {"name": "Ada L"})  # leaves the style alone
+    lh = cover_letters.get_letterhead(conn)
+    assert lh["name"] == "Ada L" and lh["email"] == "" and lh["accent"] == "#aabbcc"
+    cover_letters.save_letter_style(conn, {"accent": ""})  # leaves the contact details alone
+    lh = cover_letters.get_letterhead(conn)
+    assert lh["name"] == "Ada L" and not lh["show_letterhead"] and lh["accent"] == cover_letters.DEFAULT_ACCENT
     with pytest.raises(ValueError):
-        cover_letters.save_letterhead(conn, {"accent": "red"})
+        cover_letters.save_letter_style(conn, {"accent": "red"})
+
+
+def test_pdf_letterhead_drops_contact_details_when_off(conn):
+    cover_letters.save_contact(conn, {"name": "Ada", "email": "a@b.c"})
+    assert cover_letters.pdf_letterhead(conn)["name"] == "Ada"
+    off = cover_letters.pdf_letterhead(conn, cover_letters.clean_letter_style({"accent": "#123456"}))
+    assert off["name"] == off["email"] == "" and off["accent"] == "#123456"
+    assert cover_letters.get_letterhead(conn)["show_letterhead"]  # a preview doesn't save
+
+
+def _db_at_version(path, last):
+    from job_cannon import db
+    c = db.connect(path)
+    for version, sql in db._migration_files():
+        if version <= last:
+            c.executescript(sql)
+            c.execute(f"PRAGMA user_version = {version}")
+    return c
+
+
+def test_letterhead_saved_before_the_toggle_still_shows(tmp_path):
+    from job_cannon import db
+    c = _db_at_version(tmp_path / "old.db", 6)
+    c.execute("INSERT INTO letterhead (id, name, updated_at) VALUES (1, 'Ada', '2026-01-01')")
+    c.commit()
+    db.migrate(c)
+    assert cover_letters.pdf_letterhead(c)["name"] == "Ada"
+
+
+def test_linkedin_moves_out_of_the_old_website_field(tmp_path):
+    from job_cannon import db
+    for i, (website, expected) in enumerate([("https://www.linkedin.com/in/ada/", ("", "https://www.linkedin.com/in/ada/")),
+                              ("ada.dev", ("ada.dev", ""))]):
+        c = _db_at_version(tmp_path / f"{i}.db", 7)
+        c.execute("INSERT INTO letterhead (id, website, updated_at) VALUES (1, ?, '2026-01-01')", (website,))
+        c.commit()
+        db.migrate(c)
+        lh = cover_letters.get_letterhead(c)
+        assert (lh["website"], lh["linkedin"]) == expected
+
+
+def test_contact_line_shows_website_and_linkedin():
+    from job_cannon.pdf import _contact_items
+    both = _contact_items({"website": "https://ada.dev/", "linkedin": "https://www.linkedin.com/in/ada/"})
+    assert both == [("ada.dev", "https://ada.dev/"), ("linkedin.com/in/ada", "https://www.linkedin.com/in/ada/")]
+    assert _contact_items({"linkedin": "linkedin.com/in/ada"}) == [("linkedin.com/in/ada", "https://linkedin.com/in/ada")]
+    assert _contact_items({"website": "", "linkedin": ""}) == []
 
 
 def test_smarten_quotes_and_dashes():
@@ -222,7 +273,7 @@ def test_smarten_quotes_and_dashes():
 def test_render_letter_with_full_letterhead():
     from job_cannon.pdf import render_letter
     lh = {"name": "Ada", "location": "Firenze", "email": "a@b.c", "phone": "+39 1",
-          "website": "https://example.com/", "accent": "#336699"}
+          "website": "https://example.com/", "linkedin": "linkedin.com/in/ada", "accent": "#336699"}
     assert render_letter("15 October 2026\n\nDear X,\n\nè €\n\nBest,\nAda", lh).startswith(b"%PDF")
     assert render_letter("No date here").startswith(b"%PDF")
 

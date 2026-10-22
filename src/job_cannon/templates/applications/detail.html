@@ -61,7 +61,7 @@
         <textarea name="body" rows="18" class="letter" aria-label="Cover letter draft">{{ draft.body }}</textarea>
         <p>
           <small class="muted">{% if draft.template_name %}From “{{ draft.template_name }}” · {% endif %}saved {{ draft.updated_at[:16]|replace('T', ' ') }} UTC</small>
-          {% if not has_letterhead %}<br><small class="muted">No letterhead yet: <a href="/cover-letters#letterhead">add your name, contact details and accent colour</a> to show them at the top of the PDF.</small>{% endif %}
+          {% if needs_contact %}<br><small class="muted">No contact details yet: <a href="/profiles/{{ profile.id }}#contact">add them in profile settings</a> to show your name and contacts at the top of the PDF.</small>{% endif %}
           {% if draft_unfilled %}<br><small class="warn">Unfilled: {% for n in draft_unfilled %}<code>{{ n }}</code> {% endfor %}</small>{% endif %}
         </p>
         <div class="form-actions">

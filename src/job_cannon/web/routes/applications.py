@@ -53,6 +53,11 @@ async def create(request: Request):
     return redirect(f"/applications/{app_id}")
 
 
+def _needs_contact(letterhead: dict) -> bool:
+    """The letterhead is on but there's no name to print in it."""
+    return letterhead["show_letterhead"] and not letterhead["name"]
+
+
 def detail_page(request: Request, app, status_code: int = 200, **extra):
     """Render the application page; also used by other routes to re-render with an error."""
     c = conn(request)
@@ -72,7 +77,7 @@ def detail_page(request: Request, app, status_code: int = 200, **extra):
         draft=draft,
         draft_unfilled=cover_letters.unfilled(draft["body"]) if draft else [],
         letter_templates=cover_letters.list_templates(c),
-        has_letterhead=bool(cover_letters.get_letterhead(c)["name"]),
+        needs_contact=_needs_contact(cover_letters.get_letterhead(c)),
         prep_answers=prep.answers_for_application(c, app_id),
         **extra,
     )

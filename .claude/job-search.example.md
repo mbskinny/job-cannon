@@ -2,8 +2,8 @@
 
 Read by the `find-jobs`, `tailor-cover-letter` and `answer-application-question`
 skills. Each Job Cannon profile has its own copy, `job-search.md` in the profile's
-data folder. The easiest way to fill it in is the app's Job search notes page (profile
-menu → Job search notes), which can also store an uploaded résumé. This file shows
+data folder. The easiest way to fill it in is Job search notes in the app's profile
+settings (profile menu → Profile settings), which can also store an uploaded résumé. This file shows
 the format for editing by hand. The first profile may use `.claude/job-search.local.md`
 (gitignored) instead.
 

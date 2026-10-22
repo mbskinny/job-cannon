@@ -128,7 +128,7 @@ def resume_text_command(root: Path, profile: profiles.Profile) -> None:
     data_dir = profile.config(root).data_dir
     resume = profiles.resolve_resume(data_dir, profiles.read_job_search(data_dir / profiles.JOB_SEARCH_FILE).resume)
     if resume is None:
-        raise SystemExit(f"No résumé set for {profile.name}. Add one on the Job search notes page.")
+        raise SystemExit(f"No résumé set for {profile.name}. Add one in Profile settings.")
     path = Path(resume)
     if resume.startswith(("http://", "https://")) or path.suffix.lower() == ".pdf":
         print(resume)  # fetch the URL or read the PDF directly

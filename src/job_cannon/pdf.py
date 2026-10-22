@@ -34,6 +34,18 @@ def _hex_rgb(value: str) -> tuple[int, int, int]:
     return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
 
 
+def _link_item(site: str) -> tuple[str, str]:
+    """Show a web address without its scheme or "www.", linked when it's http(s) or has no scheme."""
+    scheme = urlsplit(site).scheme
+    if scheme in ("http", "https"):
+        label, link = site.split("://", 1)[1], site
+    elif not scheme:
+        label, link = site, f"https://{site}"
+    else:
+        return site, ""
+    return label.removeprefix("www.").rstrip("/"), link
+
+
 def _contact_items(lh: dict) -> list[tuple[str, str]]:
     """(label, link) pairs for the contact line; link is '' when not clickable."""
     items = []
@@ -43,14 +55,9 @@ def _contact_items(lh: dict) -> list[tuple[str, str]]:
         items.append((lh["email"], f"mailto:{lh['email']}"))
     if lh.get("phone"):
         items.append((lh["phone"], ""))
-    if site := lh.get("website"):
-        scheme = urlsplit(site).scheme
-        if scheme in ("http", "https"):
-            items.append((site.split("://", 1)[1].rstrip("/"), site))
-        elif not scheme:
-            items.append((site.rstrip("/"), f"https://{site}"))
-        else:
-            items.append((site, ""))
+    for field in ("website", "linkedin"):
+        if site := lh.get(field):
+            items.append(_link_item(site))
     return items
 
 

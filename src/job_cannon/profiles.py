@@ -235,7 +235,7 @@ SECTOR_NOTE_HINTS = {
 _HEADER = """# Job search profile
 
 Read by the Job Cannon skills (find-jobs, tailor-cover-letter, answer-application-question).
-Edit it on the profile's Job search notes page in the app, or by hand.
+Edit it in the app (profile menu → Profile settings), or by hand.
 """
 
 

@@ -79,12 +79,14 @@ From the command line, `uv run job-cannon profiles` lists them,
 `uv run job-cannon profiles use alex` switches, and `--profile alex` picks one
 for a single command (for example `uv run job-cannon backup --profile alex`).
 The Claude skills use the active profile and read that person's résumé
-details from `job-search.md` in their profile folder. Edit it from the profile
-menu → **Job search notes**, where you can also upload a résumé (PDF, Word,
-OpenDocument, text or Markdown).
+details from `job-search.md` in their profile folder. The profile menu →
+**Profile settings** page holds each person's name and sector, the contact
+details printed on their cover letters, their résumé (a link, or an uploaded
+PDF, Word, OpenDocument, text or Markdown file) and those job search notes.
+Whether letters get a letterhead, and its colour, is set on the Cover letters page.
 
 Each profile can also have a **sector** (Software engineering or Teaching for
-now), set on the Profiles page or with `uv run job-cannon profiles sector alex teaching`.
+now), set in Profile settings or with `uv run job-cannon profiles sector alex teaching`.
 The skills follow that sector's guide in `.claude/sectors/` (where to search,
 what makes a posting a fit, how letters are written), and interview prep
 offers starter questions for it.

@@ -1,0 +1,4 @@
+{% macro sector_options(sectors, current) -%}
+  <option value="" {% if not current %}selected{% endif %}>General (no sector)</option>
+  {% for key, label in sectors.items() %}<option value="{{ key }}" {% if key == current %}selected{% endif %}>{{ label }}</option>{% endfor %}
+{%- endmacro %}

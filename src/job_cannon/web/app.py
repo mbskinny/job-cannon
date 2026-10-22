@@ -104,6 +104,12 @@ def open_profile(app: FastAPI, profile_id: str) -> None:
     app.state.conns[profile_id] = connection
 
 
+def profile_conn(app: FastAPI, profile_id: str):
+    """Any profile's connection, opening it if needed (for pages that name the profile)."""
+    open_profile(app, profile_id)
+    return app.state.conns[profile_id]
+
+
 def close_profile(app: FastAPI, profile_id: str) -> None:
     connection = app.state.conns.pop(profile_id, None)
     if connection is not None:

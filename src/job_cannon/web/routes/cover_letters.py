@@ -44,8 +44,12 @@ def _index_page(request: Request, status_code: int = 200, **extra):
     c = conn(request)
     rows = cover_letters.list_templates(c)
     slots = {r["id"]: cover_letters.unfilled(r["body"]) for r in rows}
-    extra.setdefault("letterhead", cover_letters.get_letterhead(c))
-    return render(request, "cover_letters/index.html", status_code=status_code, rows=rows, slots=slots, **extra)
+    letterhead = cover_letters.get_letterhead(c)
+    extra.setdefault("style", letterhead)
+    contact = [letterhead[k] for k in cover_letters.CONTACT_FIELDS if letterhead[k]]
+    return render(
+        request, "cover_letters/index.html", status_code=status_code, rows=rows, slots=slots, contact=contact, **extra
+    )
 
 
 @router.get("/cover-letters")
@@ -53,28 +57,32 @@ async def index(request: Request, saved: bool = False):
     return _index_page(request, saved=saved)
 
 
-# Declared before /cover-letters/{template_id} so "letterhead" isn't parsed as an id.
-@router.post("/cover-letters/letterhead")
-async def save_letterhead(request: Request):
+# Declared before /cover-letters/{template_id} so "style" isn't parsed as an id.
+@router.post("/cover-letters/style")
+async def save_style(request: Request):
     form = await request.form()
-    values = {k: form.get(k, "") for k in cover_letters.LETTERHEAD_FIELDS}
+    values = {k: form.get(k, "") for k in cover_letters.STYLE_FIELDS}
     try:
-        cover_letters.save_letterhead(conn(request), values)
+        cover_letters.save_letter_style(conn(request), values)
     except ValueError as exc:
-        return _index_page(request, status_code=422, letterhead=values, letterhead_error=str(exc))
-    return redirect("/cover-letters?saved=1#letterhead")
+        style = {"show_letterhead": bool(values["show_letterhead"]), "accent": values["accent"]}
+        return _index_page(request, status_code=422, style=style, style_error=str(exc))
+    return redirect("/cover-letters?saved=1#letter-style")
 
 
-@router.post("/cover-letters/letterhead/preview")
-async def preview_letterhead(request: Request):
-    """Render the (unsaved) form values with the first base letter, or a sample."""
+@router.post("/cover-letters/style/preview")
+async def preview_style(request: Request):
+    """Render the (unsaved) style with the saved contact details and the first base letter, or a sample."""
     form = await request.form()
     try:
-        values = cover_letters.clean_letterhead({k: form.get(k, "") for k in cover_letters.LETTERHEAD_FIELDS})
+        style = cover_letters.clean_letter_style({k: form.get(k, "") for k in cover_letters.STYLE_FIELDS})
     except ValueError as exc:
         raise HTTPException(400, str(exc))
-    templates = cover_letters.list_templates(conn(request))
-    return _pdf_response(pdf.render_letter(templates[0]["body"] if templates else SAMPLE_LETTER, values))
+    c = conn(request)
+    templates = cover_letters.list_templates(c)
+    return _pdf_response(
+        pdf.render_letter(templates[0]["body"] if templates else SAMPLE_LETTER, cover_letters.pdf_letterhead(c, style))
+    )
 
 
 @router.get("/cover-letters/new")
@@ -183,7 +191,7 @@ async def attach(request: Request, app_id: int):
             request, app, status_code=422,
             letter_error="Fill these placeholders first: " + ", ".join(missing),
         )
-    letter = pdf.render_letter(draft["body"], cover_letters.get_letterhead(c))
+    letter = pdf.render_letter(draft["body"], cover_letters.pdf_letterhead(c))
     name = f"Cover letter - {app['company_name']} - {app['role']}.pdf".replace("/", "-")
     attachments.save(
         c,
@@ -209,7 +217,7 @@ async def preview_draft(request: Request, app_id: int):
     draft = cover_letters.get_draft(c, app_id)
     if draft is None:
         raise HTTPException(404, "No draft to preview")
-    return _pdf_response(pdf.render_letter(draft["body"], cover_letters.get_letterhead(c)))
+    return _pdf_response(pdf.render_letter(draft["body"], cover_letters.pdf_letterhead(c)))
 
 
 @router.post("/applications/{app_id}/cover-letter/delete")

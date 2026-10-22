@@ -125,8 +125,11 @@ def delete_draft(conn, app_id: int) -> None:
 
 
 # --- letterhead (single row of PDF settings) ---
+# Contact details are edited on the profile settings page, the style
+# (show_letterhead, accent) on the Cover letters page.
 
-LETTERHEAD_FIELDS = ["name", "location", "email", "phone", "website", "accent"]
+CONTACT_FIELDS = ["name", "location", "email", "phone", "website", "linkedin"]
+STYLE_FIELDS = ["show_letterhead", "accent"]
 DEFAULT_ACCENT = "#184078"
 _HEX_RE = re.compile(r"#[0-9a-fA-F]{6}")
 
@@ -134,27 +137,53 @@ _HEX_RE = re.compile(r"#[0-9a-fA-F]{6}")
 def get_letterhead(conn) -> dict:
     row = conn.execute("SELECT * FROM letterhead WHERE id = 1").fetchone()
     if row is None:
-        return {**{k: "" for k in LETTERHEAD_FIELDS}, "accent": DEFAULT_ACCENT}
-    return {k: row[k] for k in LETTERHEAD_FIELDS}
+        return {**{k: "" for k in CONTACT_FIELDS}, "show_letterhead": True, "accent": DEFAULT_ACCENT}
+    return {**{k: row[k] for k in CONTACT_FIELDS}, "show_letterhead": bool(row["show_letterhead"]), "accent": row["accent"]}
 
 
-def clean_letterhead(data: dict) -> dict:
-    out = {k: (data.get(k) or "").strip() for k in LETTERHEAD_FIELDS}
-    out["accent"] = out["accent"] or DEFAULT_ACCENT
-    if not _HEX_RE.fullmatch(out["accent"]):
-        raise ValueError("accent colour must look like #1a2b3c")
-    out["accent"] = out["accent"].lower()
+def pdf_letterhead(conn, style: dict | None = None) -> dict:
+    """What ``pdf.render_letter`` takes: no contact details when the letterhead is off.
+
+    ``style`` (from ``clean_letter_style``) overrides the saved one, for previews.
+    """
+    lh = {**get_letterhead(conn), **(style or {})}
+    if not lh["show_letterhead"]:
+        lh.update({k: "" for k in CONTACT_FIELDS})
+    return lh
+
+
+def clean_contact(data: dict) -> dict:
+    out = {k: (data.get(k) or "").strip() for k in CONTACT_FIELDS}
+    if any(len(v) > 200 for v in out.values()):
+        raise ValueError("contact details must be at most 200 characters each")
     return out
 
 
-def save_letterhead(conn, data: dict) -> None:
-    values = clean_letterhead(data)
-    cols = ", ".join(LETTERHEAD_FIELDS)
-    marks = ", ".join("?" for _ in LETTERHEAD_FIELDS)
-    updates = ", ".join(f"{k} = excluded.{k}" for k in [*LETTERHEAD_FIELDS, "updated_at"])
+def clean_letter_style(data: dict) -> dict:
+    """``show_letterhead`` is a checkbox: any non-empty value means on."""
+    accent = (data.get("accent") or "").strip() or DEFAULT_ACCENT
+    if not _HEX_RE.fullmatch(accent):
+        raise ValueError("accent colour must look like #1a2b3c")
+    return {"show_letterhead": bool(data.get("show_letterhead")), "accent": accent.lower()}
+
+
+def _save_letterhead_fields(conn, values: dict) -> None:
+    """Upsert only these columns, so saving the style never clears the contact details and vice versa."""
+    cols = ", ".join(values)
+    marks = ", ".join("?" for _ in values)
+    updates = ", ".join(f"{k} = excluded.{k}" for k in [*values, "updated_at"])
     with conn:
         conn.execute(
             f"INSERT INTO letterhead (id, {cols}, updated_at) VALUES (1, {marks}, ?)"
             f" ON CONFLICT (id) DO UPDATE SET {updates}",
             [*values.values(), now()],
         )
+
+
+def save_contact(conn, data: dict) -> None:
+    _save_letterhead_fields(conn, clean_contact(data))
+
+
+def save_letter_style(conn, data: dict) -> None:
+    values = clean_letter_style(data)
+    _save_letterhead_fields(conn, {**values, "show_letterhead": int(values["show_letterhead"])})
