@@ -9,7 +9,7 @@ The goal is a short list (default 4-5, or whatever number the user asks for) of 
 
 ## 1. Build the profile
 
-Read `.claude/job-search.local.md` for the résumé location and any notes. If it doesn't exist, ask the user where their résumé is and offer to create the file from `.claude/job-search.example.md`. Fetch the résumé (WebFetch for a URL, Read for a local file). Pull out: seniority and title, core stack, standout domains (e.g. data visualization, observability), home location and citizenship, stated location preferences (remote/regions), and languages spoken. The résumé is the source of truth for facts about the user. The profile's notes can add preferences it doesn't state, and constraints in the request (salary floor, contract vs. employee, a specific domain) override both.
+First run `uv run job-cannon profiles --json` to get the active Job Cannon profile. Several people can share the install, each with their own tracker and résumé, so say which profile (`name`) you're working in. If the user means someone else, pass `--profile <id>` to every script below, and to `profiles --json`. Read the file at `job_search_file` for the résumé location and any notes. If it doesn't exist and the profile id is `default`, fall back to `.claude/job-search.local.md`. If neither exists, ask the user where their résumé is and offer to create `job_search_file` from `.claude/job-search.example.md`. Fetch the résumé (WebFetch for a URL, Read for a local file). Then read the profile's **sector guide**, `.claude/sectors/<sector>.md` (`general.md` if `sector` is empty), and pull out what its *Profile cues* section lists. The guide holds everything specific to the person's field; the steps below say when to use each section. If `sector` is empty and the résumé makes the field obvious, offer to set it (`uv run job-cannon profiles sector <id> <sector>`, with a sector that has a guide). The résumé is the source of truth for facts about the user. The profile's notes can add preferences it doesn't state, and constraints in the request (salary floor, contract vs. employee, a specific domain) override both.
 
 ## 2. Check what's already tracked
 
@@ -21,54 +21,37 @@ Don't propose anything already on the board. Also skip companies the user has pr
 
 ## 3. Search
 
-LinkedIn in the user's local Chrome is the best source: it's logged in, results are fresh, and postings show remote eligibility and pay. Web search is mostly stale aggregators, so it's useful as a supplement (Hacker News "Who is hiring" for the current month, company career pages) but expect many dead links.
+Follow the sector guide's *Search* section for the sources and the queries, and adjust them to the person's notes (location, contract, subject or specialism). Run 2-3 searches from different angles.
 
-LinkedIn tips (claude-in-chrome tools, in a new tab you close at the end):
-- Search URL: `https://www.linkedin.com/jobs/search/?keywords=<terms>&location=European%20Union&geoId=91000000&f_WT=2&f_TPR=r1209600` (`f_WT=2` = remote, `f_TPR=r1209600` = past 2 weeks, `r2592000` = past month). Adjust keywords/geo to the profile.
-- Pages render slowly. Wait ~3-4s before `get_page_text`, and retry once if it returns empty.
-- Open a job directly with `https://www.linkedin.com/jobs/view/<id>/`. The id is `currentJobId` in the URL after clicking a card. Use this id-based URL as `posting_url`, never the tracking-laden search URL.
-- Run 2-3 searches with different angles (core stack, e.g. "senior full stack TypeScript Go"; domain strength, e.g. "data visualization React"; local roles near the user's home city).
+Browser mechanics for any site (claude-in-chrome tools, in a new tab you close at the end):
+- Pages often render slowly. Wait ~3-4s before `get_page_text`, and retry once if it returns empty.
+- Use a stable URL for each posting as `posting_url`: for LinkedIn, `https://www.linkedin.com/jobs/view/<id>/` (the id is `currentJobId` in the URL after clicking a card), never the tracking-laden search URL; elsewhere, the posting's own page on the employer's or board's site, not a news article or aggregator about it.
 - **Read only.** Don't click Apply, Easy Apply, Save, Message, "I'm interested", or anything that sends something on the user's behalf.
 
 ## 4. Verify each candidate
 
 Read the actual posting before including it. Reject or flag:
-- **Closed** postings (aggregators often show closed roles).
-- **Location mismatch**: "remote" that is limited to specific countries not including the user's, onsite/hybrid elsewhere, or working hours far outside their time zone (e.g. US Eastern hours from Europe).
-- **Stack mismatch**: only a keyword overlap.
+- **Closed** postings, or ones whose application deadline has passed (aggregators often show closed roles).
+- **Location mismatch** with the person's stated preferences.
+- The sector guide's *Fit checks*.
 - **Contract/freelance**: fine to include, but say so in the role and notes.
 
-If a role is strong but has one open question (e.g. Italy not in the listed countries), include it and make resolving that question the `next_action`.
+If a role is strong but has one open question (e.g. a qualification the posting may waive), include it and make resolving that question the `next_action`.
 
 ## 5. Confirm, then insert
 
-Present the shortlist as a table (company, role, why it fits, pay) plus a short "left out and why" list, so the user can pull any of those back in. If the user's request already said to add them, go straight to inserting.
+Present the shortlist as a table (company, role, why it fits, pay or contract, and deadline when there is one) plus a short "left out and why" list, so the user can pull any of those back in. If the user's request already said to add them, go straight to inserting.
 
-Write a JSON file in the scratchpad and run the bundled script, which backs up the data folder first, skips duplicates by URL or company+role, and inserts via `repo.applications.create` (so status history is recorded):
-
-```json
-[
-  {
-    "company": "Toggl",
-    "role": "Senior Full Stack Engineer",
-    "posting_url": "https://www.linkedin.com/jobs/view/4460399469/",
-    "location": "Remote (anywhere UTC-4 to UTC+4)",
-    "salary_range": "€83,000",
-    "source": "LinkedIn",
-    "next_action": "Apply",
-    "notes": "Manager Tribe for Toggl 2.0: dashboards and visualizations on dense data. React + TypeScript, Go backend, Postgres. Meetings 11:00-16:00 UTC."
-  }
-]
-```
+Write a JSON file in the scratchpad and run the bundled script, which backs up the data folder first, skips duplicates by URL or company+role, and inserts via `repo.applications.create` (so status history is recorded). The file is a list of objects with `company`, `role`, and any of `posting_url`, `location`, `salary_range`, `source`, `next_action`, `notes`; the sector guide's *Record* section says how to fill them for this field and has an example.
 
 ```sh
 uv run python .claude/skills/find-jobs/scripts/add_applications.py <scratchpad>/jobs.json
 ```
 
-Field guidance: omit `status` (defaults to wishlist). Omit `interest` (1-5) unless the user gave you a rating; they usually rate listings themselves after reviewing them. `location` should state the remote terms, not just a city. `salary_range` should be as printed, with currency. `notes` should cover what the company does, the stack, the fit, and any caveats in 2-4 sentences. Leave out fields you don't know rather than guessing.
+Field guidance: omit `status` (defaults to wishlist). Omit `interest` (1-5) unless the user gave you a rating; they usually rate listings themselves after reviewing them. Leave out fields you don't know rather than guessing.
 
-To set interest levels later (e.g. "make Toggl a 5"), find the ids with `--list` (the third column is interest) and run `--rate ID=LEVEL ...` (blank level clears it). This doesn't back up first; it only touches the `interest` column.
+To set interest levels later (e.g. "make Acme a 5"), find the ids with `--list` (the third column is interest) and run `--rate ID=LEVEL ...` (blank level clears it). This doesn't back up first; it only touches the `interest` column.
 
 ## 6. Report
 
-Summarize what was added (table), what was skipped and why, the backup path, and a Sources list of the posting URLs. State plainly that nothing was applied to or sent from LinkedIn.
+Summarize what was added (table), what was skipped and why, the backup path, and a Sources list of the posting URLs. State plainly that nothing was applied to or sent from any site.

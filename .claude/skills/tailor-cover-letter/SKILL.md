@@ -9,6 +9,8 @@ The user keeps **base letters** in Job Cannon (Cover letters page): their own pr
 
 ## 1. Find the application
 
+Run `uv run job-cannon profiles --json` to get the active Job Cannon profile. Several people can share the install, each with their own tracker and résumé, so say which profile (`name`) you're working in. If the user means someone else, pass `--profile <id>` to every script below, and to `profiles --json`. Then read the profile's **sector guide**, `.claude/sectors/<sector>.md` (`general.md` if `sector` is empty): its *Writing* section holds the conventions for this person's field (language and register, what counts as evidence), and the person's own notes override it.
+
 ```sh
 uv run python .claude/skills/find-jobs/scripts/add_applications.py --list
 uv run python .claude/skills/tailor-cover-letter/scripts/cover_letter.py context <APP_ID>
@@ -20,9 +22,9 @@ If a draft already exists, ask before replacing it, because the user may have ed
 
 ## 2. Gather material
 
-- **Résumé**: its location is in `.claude/job-search.local.md` (WebFetch for a URL, Read for a local file). If that file doesn't exist, ask the user where their résumé is and offer to create it from `.claude/job-search.example.md`. The résumé, plus that file's notes, is the only source of facts about the user.
+- **Résumé**: read the file at `job_search_file` (from `profiles --json`, step 1) for the résumé location and any notes. If it doesn't exist and the profile id is `default`, fall back to `.claude/job-search.local.md`. If neither exists, ask the user where their résumé is and offer to create `job_search_file` from `.claude/job-search.example.md`. Fetch the résumé with WebFetch for a URL, Read for a local file. The résumé, plus that file's notes, is the only source of facts about the user.
 - **Posting**: `posting_url`. Use WebFetch, or for LinkedIn the user's Chrome (claude-in-chrome, new tab, `https://www.linkedin.com/jobs/view/<id>/`). **Read only**: never click Apply, Save, Message, or anything that sends something. If the posting is closed or unreachable, say so and work from the application's notes.
-- The application's `notes`, which often summarize the company, stack and fit.
+- The application's `notes`, which often summarize the employer, the job and the fit.
 
 ## 3. Choose the base letter
 
@@ -31,8 +33,8 @@ Use the one the user named. Otherwise pick the one whose name and content best f
 ## 4. Fill the placeholders
 
 - Replace **only** the `{{...}}` placeholders, following each one's instruction (length, focus). Leave the user's fixed text exactly as written, including line breaks and the sign-off.
-- **Never invent** experience, numbers, employers, or skills that aren't in the résumé. Tie claims to specific things in the posting (product, stack, responsibilities), not generic praise.
-- Match the voice of the surrounding text: same language, formality and sentence length. If the posting is in Italian and the base letter is in English, keep English unless the user asks otherwise.
+- **Never invent** experience, numbers, employers, or skills that aren't in the résumé. Tie claims to specific things in the posting (what the employer does, the job's responsibilities, its requirements), not generic praise. Follow the sector guide's *Writing* section for what counts as evidence and for the register.
+- Match the voice of the surrounding text: same language, formality and sentence length. If the posting is in Italian and the base letter is in English, keep English unless the user asks otherwise (the sector guide may say which language employers expect; mention it if it differs from the letter's).
 - If a placeholder can't be filled honestly (e.g. `{{recipient}}` with no known name), use its instruction's fallback; if there is none, use a neutral choice ("Hiring Team") and mention it.
 - No placeholders may remain. The app refuses to attach a letter that still contains `{{`.
 

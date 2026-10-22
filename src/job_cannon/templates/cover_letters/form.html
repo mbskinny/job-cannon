@@ -4,7 +4,7 @@
 <h1>{{ 'Edit base letter' if template else 'New base letter' }}</h1>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 <form method="post" action="{{ '/cover-letters/%d' % template.id if template else '/cover-letters' }}">
-  <label>Name * <input name="name" required value="{{ values.name or '' }}" placeholder="Full-stack, Data viz, Italian…" {% if not template %}autofocus{% endif %}></label>
+  <label>Name * <input name="name" required value="{{ values.name or '' }}" placeholder="General, Short, Italian…" {% if not template %}autofocus{% endif %}></label>
   <label>Letter
     <textarea name="body" rows="20" class="letter">{{ values.body or '' }}</textarea>
     <small>

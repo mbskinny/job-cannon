@@ -280,3 +280,14 @@ def test_prep_answers_and_cleanup(conn):
     assert prep.answers_for_question(conn, q)[-1]["application_id"] is None  # answer kept, link cleared
     assert prep.delete_question(conn, q) == ["abc.webm"]
     assert prep.list_tags(conn) == []
+
+
+def test_starter_questions_by_sector(conn):
+    from job_cannon.repo import prep
+
+    assert prep.add_starter_questions(conn, "teaching") == len(prep.STARTER_QUESTIONS) + len(prep.SECTOR_QUESTIONS["teaching"])
+    prompts = {q["prompt"] for q in prep.list_questions(conn)}
+    assert "Tell me about yourself." in prompts
+    assert not prompts & {q for q, _ in prep.SECTOR_QUESTIONS["software"]}
+    assert prep.add_starter_questions(conn, "teaching") == 0
+    assert prep.add_starter_questions(conn) == 0  # general set already there

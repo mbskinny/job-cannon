@@ -7,7 +7,8 @@ Usage (from the repo root):
 
 save-draft stores the text as the application's draft (replacing any existing
 one); the user reviews it and clicks "Attach as PDF" in the app. Data folder
-resolves the same way as the app: --data-dir, then JOB_CANNON_DATA, then ~/JobCannon.
+and profile resolve the same way as the app: --data-dir, then JOB_CANNON_DATA,
+then ~/JobCannon; --profile, then JOB_CANNON_PROFILE, then the active profile.
 """
 
 import argparse
@@ -15,7 +16,7 @@ import json
 import subprocess
 import sys
 
-from job_cannon import config, db
+from job_cannon import db, profiles
 from job_cannon.repo import applications, cover_letters
 
 APP_FIELDS = ["id", "company_name", "role", "status", "posting_url", "location", "salary_range", "source", "notes"]
@@ -24,6 +25,7 @@ APP_FIELDS = ["id", "company_name", "role", "status", "posting_url", "location",
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--data-dir")
+    p.add_argument("--profile")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("templates", help="list base letters and their placeholders")
     p_ctx = sub.add_parser("context", help="JSON: application, current draft, base letters")
@@ -35,7 +37,12 @@ def main() -> int:
     p_save.add_argument("--no-backup", action="store_true")
     args = p.parse_args()
 
-    cfg = config.resolve(args.data_dir)
+    try:
+        root, profile = profiles.resolve_profile(args.data_dir, args.profile)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    cfg = profile.config(root)
     cfg.ensure_dirs()
     conn = db.connect(cfg.db_path)
     db.migrate(conn)
@@ -54,6 +61,7 @@ def main() -> int:
     if args.command == "context":
         draft = cover_letters.get_draft(conn, args.app_id)
         out = {
+            "profile": profile.name,
             "application": {k: app[k] for k in APP_FIELDS},
             "draft": dict(draft) if draft else None,
             "templates": [
@@ -79,15 +87,15 @@ def main() -> int:
         print(f"no base letter with id {args.template}", file=sys.stderr)
         return 1
     if not args.no_backup:
-        backup_dir = cfg.data_dir.parent / f"{cfg.data_dir.name}-backups"
-        backup_dir.mkdir(exist_ok=True)
+        backup_dir = root.parent / f"{root.name}-backups" / profile.id
+        backup_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["job-cannon", "--data-dir", str(cfg.data_dir), "backup", "--out", str(backup_dir)],
+            ["job-cannon", "--data-dir", str(root), "--profile", profile.id, "backup", "--out", str(backup_dir)],
             check=True,
         )
     cover_letters.save_draft(conn, args.app_id, body, args.template)
     missing = cover_letters.unfilled(body)
-    print(f"saved draft for #{args.app_id}: {app['company_name']} - {app['role']}")
+    print(f"saved draft for #{args.app_id} in profile {profile.name}: {app['company_name']} - {app['role']}")
     if missing:
         print("still unfilled: " + ", ".join(missing))
     return 0

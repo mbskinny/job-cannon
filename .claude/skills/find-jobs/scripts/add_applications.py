@@ -8,8 +8,9 @@ Usage (from the repo root):
 --rate sets interest levels (1-5, blank to clear) on tracked applications by id.
 
 jobs.json is a list of objects with "company" plus any of applications.FIELDS
-(role is required; "interest" is an optional 1-5 level). Data folder resolves the same way as the app:
---data-dir, then JOB_CANNON_DATA, then ~/JobCannon.
+(role is required; "interest" is an optional 1-5 level). Data folder and profile resolve the same way as
+the app: --data-dir, then JOB_CANNON_DATA, then ~/JobCannon; --profile, then JOB_CANNON_PROFILE, then the
+active profile.
 """
 
 import argparse
@@ -17,7 +18,7 @@ import json
 import subprocess
 import sys
 
-from job_cannon import config, db
+from job_cannon import db, profiles
 from job_cannon.repo import applications
 
 
@@ -40,13 +41,19 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("jobs", nargs="?", help="JSON file of listings to add")
     p.add_argument("--data-dir")
+    p.add_argument("--profile")
     p.add_argument("--list", action="store_true", help="print tracked applications and exit")
     p.add_argument("--rate", nargs="+", metavar="ID=LEVEL", help="set interest levels and exit")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--no-backup", action="store_true")
     args = p.parse_args()
 
-    cfg = config.resolve(args.data_dir)
+    try:
+        root, profile = profiles.resolve_profile(args.data_dir, args.profile)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    cfg = profile.config(root)
     cfg.ensure_dirs()
     conn = db.connect(cfg.db_path)
     db.migrate(conn)
@@ -65,6 +72,7 @@ def main() -> int:
         return 0
 
     if args.list or not args.jobs:
+        print(f"# profile: {profile.name}")
         for r in rows:
             status = r["status"] + (" (archived)" if r["archived_at"] else "")
             print(f"{r['id']}\t{status}\t{r['interest'] or '-'}\t{r['company_name']}\t{r['role']}\t{r['posting_url'] or ''}")
@@ -87,13 +95,14 @@ def main() -> int:
         return 0
 
     if not args.no_backup:
-        backup_dir = cfg.data_dir.parent / f"{cfg.data_dir.name}-backups"
-        backup_dir.mkdir(exist_ok=True)
+        backup_dir = root.parent / f"{root.name}-backups" / profile.id
+        backup_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["job-cannon", "--data-dir", str(cfg.data_dir), "backup", "--out", str(backup_dir)],
+            ["job-cannon", "--data-dir", str(root), "--profile", profile.id, "backup", "--out", str(backup_dir)],
             check=True,
         )
 
+    print(f"profile: {profile.name}")
     for company, job in to_add:
         app_id = applications.create(conn, company, job)
         print(f"added #{app_id}: {company} - {job['role']}")

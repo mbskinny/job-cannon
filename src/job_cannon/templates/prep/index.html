@@ -25,7 +25,8 @@
 <div id="questions">{% include "prep/_questions.html" %}</div>
 {% else %}
 <article>
-  <p>No questions yet. Write your own, or start from a set of common intro, behavioural and experience questions.</p>
+  <p>No questions yet. Write your own, or start from a set of common intro, behavioural and experience
+    questions{% if profile.sector %}, plus some for {{ profile.sector_label|lower }}{% endif %}.</p>
   <form method="post" action="/prep/starter" class="inline"><button type="submit">Add starter questions</button></form>
 </article>
 {% endif %}

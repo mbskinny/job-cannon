@@ -4,7 +4,7 @@
     const body = new FormData();
     body.append("status", list.dataset.status);
     list.querySelectorAll(".card").forEach((card) => body.append("ids", card.dataset.id));
-    return fetch("/board/reorder", { method: "POST", body }).then((res) => {
+    return fetch("/board/reorder", { method: "POST", body, headers: { "X-Job-Cannon-Profile": document.body.dataset.profile } }).then((res) => {
       if (!res.ok) throw new Error("Save failed: " + res.status);
     });
   }

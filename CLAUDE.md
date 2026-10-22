@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Job Cannon is a local, single-user job-search manager (applications, kanban board, contacts, interaction log with follow-ups, file attachments). It's a FastAPI + Jinja + htmx app served on localhost, backed by one SQLite file. All user data lives in one portable data folder.
+Job Cannon is a local job-search manager (applications, kanban board, contacts, interaction log with follow-ups, file attachments). It's a FastAPI + Jinja + htmx app served on localhost, backed by one SQLite file per profile. Profiles let several people share one OS login, each with their own data. All of it lives in one portable data folder.
 
 ## Commands
 
@@ -13,27 +13,32 @@ uv sync                                   # install deps (incl. dev group: pytes
 uv sync --extra voice                     # also faster-whisper, for transcribing recorded prep answers
 uv run job-cannon                         # serve at http://127.0.0.1:8765/ and open a browser
 uv run job-cannon serve --no-browser --port 9000 --data-dir /tmp/jc   # dev run against throwaway data
-uv run job-cannon backup --out DIR        # zip of DB snapshot + files/
+uv run job-cannon backup --out DIR        # zip of the active profile's DB snapshot + files/ (--profile X, or --all)
+uv run job-cannon profiles [--json]       # list profiles / active profile as JSON; `profiles use NAME` switches
+uv run job-cannon profiles sector NAME teaching   # set a profile's job sector ('' for general)
 uv run pytest                             # all tests
 uv run pytest tests/test_web.py::test_name   # single test
 ```
 
 There is no linter/formatter configured and no frontend build step.
 
-Data folder resolution: `--data-dir` flag → `JOB_CANNON_DATA` env var → `~/JobCannon`. It contains `jobcannon.db` and `files/`. When running the app during development, pass `--data-dir` so you don't touch the user's real data in `~/JobCannon`.
+Data folder resolution: `--data-dir` flag → `JOB_CANNON_DATA` env var → `~/JobCannon`. That folder is the **root**: it holds `profiles.json` (the profile registry and the active profile) and the first profile's `jobcannon.db` and `files/` (that profile's `dir` is `"."`, so installs from before profiles keep working with nothing moved). Later profiles live in `profiles/<id>/`, each an ordinary data folder (`config.Config`). Profile selection: `--profile` → `JOB_CANNON_PROFILE` → the active one. Without a `profiles.json` there is one profile, `default`, and reading never creates the file. When running the app during development, pass `--data-dir` so you don't touch the user's real data in `~/JobCannon`.
 
 ## Architecture
 
 Layers, top to bottom:
 
-- `cli.py`: argparse entry point (`serve` is the default subcommand, plus `backup`). `--data-dir` is accepted before or after the subcommand.
-- `web/app.py`: `create_app(cfg)` factory. It opens **one shared SQLite connection** at startup, runs migrations, and stores it on `app.state.conn`. Route modules import shared helpers from here: `conn(request)`, `config(request)`, `render(...)` (injects `today`), `redirect(...)` (303), `safe_next(...)`.
+- `cli.py`: argparse entry point (`serve` is the default subcommand, plus `backup` and `profiles`). `--data-dir` and `--profile` are accepted before or after the subcommand.
+- `profiles.py`: the registry (`load`, `create`, `rename`, `set_active`, `check_delete`/`delete`, `resolve_profile`). It has no web code; the skill scripts use it too.
+- `web/app.py`: `create_app(root, profile=None)` factory. It keeps **one SQLite connection per opened profile** in `app.state.conns` (opened lazily by `open_profile`, which migrates and runs `prep.fail_pending`), and the active profile id in `app.state.active`. Route modules import shared helpers from here: `conn(request)` and `config(request)` (the **active** profile's connection and data folder; always go through these), `render(...)` (injects `today`, `profile`, `profiles`), `redirect(...)` (303), `safe_next(...)`.
 - `web/routes/*.py`: one `APIRouter` per area. Each must be added to the `include_router` loop at the bottom of `create_app`.
 - `repo/*.py`: plain-`sqlite3` data access. Each takes a `conn` as its first argument and returns `sqlite3.Row`s. Writes are wrapped in `with conn:` for the transaction. Repo functions raise `ValueError` for invalid input, and routes turn that into a 422 form re-render or a 400.
 - `migrations/NNN_*.sql`: applied in order by `db.migrate()`, which tracks the applied version with `PRAGMA user_version`. To change the schema, add a new numbered file (e.g. `002_*.sql`). Never edit `001_init.sql`, because existing user databases have already applied it.
 
 Key invariants and conventions:
 
+- **Profiles**: only one is active at a time, for the whole app (switching in one tab switches every tab). Connections are **never closed on a switch**, so a background transcription still writes to the profile it started in. Only deleting a profile closes its connection. After changing `profiles.json`, call `load_profiles(app)`.
+- **Sectors**: each profile has a `sector` (a `profiles.SECTORS` key, or `""` for general), stored in `profiles.json`. It picks the Claude skills' sector guide, `.claude/sectors/<key>.md` (`general.md` when empty), and the extra interview-prep starter questions in `prep.SECTOR_QUESTIONS`. The skills stay sector-neutral and defer to the guide's sections (*Profile cues*, *Search*, *Fit checks*, *Record*, *Writing*), and the person's `job-search.md` holds only personal facts. To add a sector: add it to `SECTORS`, write its guide with those headings (a test checks every sector has one), and optionally add starter questions. `load_profiles` keeps the app's active profile, so a CLI `profiles use` waits for a restart, but a CLI sector change is picked up.
 - **All route handlers must be `async def`.** That keeps them on the event-loop thread so the single shared connection is used without locking (`check_same_thread=False`). A sync `def` handler would run in a threadpool and break this.
 - **Enumerated values are defined twice**, once as Python lists (`applications.STATUSES`, `interactions.KINDS`, `attachments.KINDS`, `prep.ANSWER_MODES`, `prep.TRANSCRIPT_STATUSES`) and once as SQL `CHECK` constraints in the migration. Changing one requires a migration for the other. The Python lists are exposed to every template as Jinja globals in `web/app.py`.
 - **Status changes** go through `applications.create`, `update`, or `reorder`. These append to `status_history` and reset `position` when the status changes. Don't update `status` directly.
@@ -48,6 +53,7 @@ Key invariants and conventions:
 Security measures to preserve (the app is localhost-only):
 - `TrustedHostMiddleware` limits hosts to `127.0.0.1`, `localhost`, and `testserver` (blocks DNS rebinding).
 - A middleware rejects non-GET requests whose `Origin` doesn't match `Host` (CSRF).
+- Stale-tab guard: pages send the profile they were rendered for (`X-Job-Cannon-Profile` via `hx-headers` on `<body>`, `?_profile=` added to plain form posts by `static/profile-guard.js`, and an explicit header in `board.js`/`prep-recorder.js`). A middleware answers 409 to non-GET requests whose profile isn't the active one, so a tab left open can't write into another person's data. New `fetch` POSTs must send the header. `/profiles/*` is exempt.
 - `safe_next` allows only relative redirects, and the `http_only` Jinja filter allows only http(s) links in user-supplied URLs.
 - Attachments are served inline only for an allow-list of MIME types (`INLINE_TYPES` in `routes/files.py`), always with `nosniff`. Anything else is a download.
 
@@ -57,4 +63,4 @@ Theme ("Ledger": navy ink, brass, cream paper; Rokkitt headings, Source Sans 3 b
 
 ## Tests
 
-`tests/conftest.py` provides `cfg` (a temp data dir), `conn` (a migrated connection, for repo tests), and `client` (a FastAPI `TestClient` over `create_app`, for web tests). Tests never touch `~/JobCannon`.
+`tests/conftest.py` provides `cfg` (a temp data dir, which is also the root of its default profile), `conn` (a migrated connection, for repo tests), and `client` (a FastAPI `TestClient` over `create_app(cfg.data_dir)`, for web tests). Profile tests are in `tests/test_profiles.py`. Tests never touch `~/JobCannon`.
