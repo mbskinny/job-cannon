@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 
 from job_cannon.repo import applications, attachments, contacts, cover_letters, interactions, prep
-from job_cannon.web.app import config, conn, redirect, render
+from job_cannon.web.app import config, conn, redirect, render, safe_next
 
 router = APIRouter(prefix="/applications")
 
@@ -141,6 +141,14 @@ async def archive(request: Request, app_id: int):
     _get_or_404(request, app_id)
     applications.set_archived(conn(request), app_id, True)
     return redirect(f"/applications/{app_id}")
+
+
+@router.post("/{app_id}/next-action/done")
+async def next_action_done(request: Request, app_id: int):
+    form = await request.form()
+    _get_or_404(request, app_id)
+    applications.complete_next_action(conn(request), app_id)
+    return redirect(safe_next(form.get("next"), f"/applications/{app_id}"))
 
 
 @router.post("/{app_id}/unarchive")

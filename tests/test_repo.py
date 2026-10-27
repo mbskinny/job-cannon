@@ -118,6 +118,23 @@ def test_dashboard_follow_ups(conn):
     assert dashboard.follow_ups(conn, today)["today"] == []
 
 
+def test_complete_next_action(conn):
+    today = date(2026, 10, 14)
+    a = applications.create(conn, "Acme", {"role": "Eng", "next_action": "Email", "next_action_due": "2026-10-10"})
+
+    applications.complete_next_action(conn, a)
+    row = applications.get(conn, a)
+    assert row["next_action"] == "" and row["next_action_due"] is None
+    assert dashboard.follow_ups(conn, today)["overdue"] == []
+    notes = interactions.for_application(conn, a)
+    assert [(n["kind"], n["summary"]) for n in notes] == [("note", "Done: Email")]
+
+    applications.complete_next_action(conn, a)  # a second click logs nothing more
+    assert len(interactions.for_application(conn, a)) == 1
+    with pytest.raises(KeyError):
+        applications.complete_next_action(conn, 999)
+
+
 def test_archive_hides_without_changing_status(conn):
     today = date(2026, 10, 14)
     a = applications.create(conn, "Closed Co", {"role": "Eng", "next_action": "Apply", "next_action_due": "2026-10-10"})

@@ -4,6 +4,7 @@ import sqlite3
 from datetime import date
 
 from job_cannon.db import now
+from job_cannon.repo.interactions import local_now
 
 STATUSES = ["wishlist", "applied", "screening", "interviewing", "offer", "rejected", "withdrawn"]
 STATUS_LABELS = {s: s.capitalize() for s in STATUSES}
@@ -182,6 +183,26 @@ def set_archived(conn, app_id: int, archived: bool) -> None:
         conn.execute(
             "UPDATE applications SET archived_at = ?, updated_at = ? WHERE id = ?",
             (now() if archived else None, now(), app_id),
+        )
+
+
+def complete_next_action(conn, app_id: int) -> None:
+    """Mark the next action done: clear it and log a note on the application's timeline."""
+    current = get(conn, app_id)
+    if current is None:
+        raise KeyError(app_id)
+    if not current["next_action"] and not current["next_action_due"]:
+        return  # already done (e.g. a double click), so don't log it twice
+    with conn:
+        conn.execute(
+            "INSERT INTO interactions (application_id, kind, occurred_at, summary)"
+            " VALUES (?, 'note', ?, ?)",
+            (app_id, local_now(), f"Done: {current['next_action'] or 'next action'}"),
+        )
+        conn.execute(
+            "UPDATE applications SET next_action = '', next_action_due = NULL, updated_at = ?"
+            " WHERE id = ?",
+            (now(), app_id),
         )
 
 

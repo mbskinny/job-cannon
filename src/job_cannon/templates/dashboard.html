@@ -27,7 +27,7 @@
 {% endif %}
 
 <div class="dash-grid">
-  <article>
+  <article id="follow-ups">
     <header><h2>Follow-ups</h2></header>
     {% set groups = [('overdue', 'Overdue'), ('today', 'Today'), ('upcoming', 'Next 7 days')] %}
     {% set any_items = follow_ups.overdue or follow_ups.today or follow_ups.upcoming %}
@@ -48,11 +48,14 @@
               {% else %}{{ f.label }}{% endif %}
             </small>
           </div>
-          {% if f.source == 'interaction' %}
-          <form method="post" action="/interactions/{{ f.interaction_id }}/done" class="inline">
-            <input type="hidden" name="next" value="/"><button class="link">Done</button>
+          {% if f.source == 'interaction' %}{% set done_url = '/interactions/%s/done' % f.interaction_id %}
+          {% else %}{% set done_url = '/applications/%s/next-action/done' % f.application_id %}{% endif %}
+          {# htmx follows the redirect to / and swaps in the refreshed lists, so the item goes without a reload #}
+          <form method="post" action="{{ done_url }}" class="inline"
+                hx-post="{{ done_url }}" hx-target="#follow-ups" hx-select="#follow-ups" hx-swap="outerHTML"
+                hx-select-oob="#recent-interactions">
+            <input type="hidden" name="next" value="/"><button class="link" title="Mark done">Done</button>
           </form>
-          {% endif %}
         </li>
         {% endfor %}
       </ul>
@@ -73,7 +76,7 @@
       </ul>
       {% else %}<p class="muted">No applications yet. <a href="/applications/new">Add your first one</a>.</p>{% endif %}
     </article>
-    <article>
+    <article id="recent-interactions">
       <header><h2>Recent interactions</h2></header>
       {{ interaction_list(recent_interactions, '/', show_app=True) }}
     </article>

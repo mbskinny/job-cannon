@@ -75,6 +75,25 @@ def test_contacts_and_interactions(client):
     assert "Overdue" in client.get("/").text
 
 
+def test_dashboard_next_action_done(client):
+    app_id = _create_app(client, next_action="Chase recruiter", next_action_due="2000-01-01")
+    page = client.get("/").text
+    assert "Chase recruiter" in page and f"/applications/{app_id}/next-action/done" in page
+
+    resp = client.post(f"/applications/{app_id}/next-action/done", data={"next": "/"}, follow_redirects=False)
+    assert resp.status_code == 303 and resp.headers["location"] == "/"
+    page = client.get("/").text
+    assert "Overdue" not in page and "Done: Chase recruiter" in page
+    assert "Done: Chase recruiter" in client.get(f"/applications/{app_id}").text
+
+    # htmx follows the redirect and swaps the follow-ups list from the dashboard it lands on
+    app_id = _create_app(client, next_action="Send portfolio", next_action_due="2000-01-01")
+    resp = client.post(f"/applications/{app_id}/next-action/done", data={"next": "/"},
+                       headers={"HX-Request": "true"})
+    assert 'id="follow-ups"' in resp.text and 'id="recent-interactions"' in resp.text
+    assert client.post("/applications/999/next-action/done").status_code == 404
+
+
 def test_open_redirect_blocked(client):
     app_id = _create_app(client)
     resp = client.post("/interactions", data={
