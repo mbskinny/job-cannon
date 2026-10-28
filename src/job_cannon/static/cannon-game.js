@@ -40,6 +40,12 @@
   const SPEED_PER_POWER = 6;     // px/s per power point
   const MAX_WIND = 40;           // px/s² either way
   const BLAST = 28;              // crater radius
+  // Damage, out of MAX_HP: a direct hit takes DIRECT_DAMAGE, a burst within SPLASH px of a cannon up to SPLASH_DAMAGE
+  // (less the further off it lands), and a cannon whose ground is blown away takes 1 per 3 px it falls past the first 10.
+  const MAX_HP = 100;
+  const DIRECT_DAMAGE = 45;
+  const SPLASH = BLAST + 30;
+  const SPLASH_DAMAGE = 35;
   // Cannons are the header logo (templates/partials/logo.html), drawn in its 120-unit space at LOGO_SCALE px per unit.
   // A cannon's (x, y) is where its wheel touches the ground: logo point (50, 103.5).
   const LOGO_SCALE = 0.7;
@@ -55,7 +61,7 @@
   const SPOKES_PATH = new Path2D("M50 70 V98 M36 84 H64 M40.1 74.1 L59.9 93.9 M59.9 74.1 L40.1 93.9");
 
   let dlg, canvas, ctx, els, colors;
-  let ground, cannons, turn, wind, ball, trail, boom, message, busy, over, cpuError, gameId = 0, qIndex = -1;
+  let ground, cannons, turn, wind, ball, trail, boom, popups, message, busy, over, cpuError, gameId = 0, qIndex = -1;
 
   // --- Trigger: a single click on the logo still navigates, a double-click opens the game. ---
   let navTimer;
@@ -161,9 +167,9 @@
       { x: inset(), dir: 1, angle: 45, power: 60, color: colors.p1, name: isCpu() ? "You" : "Player 1", trail: null },
       { x: W - inset(), dir: -1, angle: 45, power: 60, color: colors.p2, name: isCpu() ? "Computer" : "Player 2", trail: null },
     ];
-    for (const c of cannons) { flatten(c.x); c.y = restY(c.x); c.alive = true; }
+    for (const c of cannons) { flatten(c.x); c.y = restY(c.x); c.hp = MAX_HP; c.alive = true; }
     turn = Math.random() < 0.5 ? 0 : 1;
-    over = false; busy = false; ball = null; boom = null; cpuError = 20;
+    over = false; busy = false; ball = null; boom = null; popups = []; cpuError = 20;
     nextQuestion();
     startTurn();
   }
@@ -222,7 +228,7 @@
     if (best.miss === Infinity) best = { angle: 45, power: 60 };
     // Starts sloppy and tightens up each turn.
     const noise = (Math.random() + Math.random() + Math.random() - 1.5) * cpuError;
-    cpuError = Math.max(0.5, cpuError * 0.6);
+    cpuError = Math.max(0.5, cpuError * 0.75);
     me.angle = best.angle;
     me.power = clamp(Math.round(best.power + noise), 5, 100);
     sync();
@@ -266,10 +272,24 @@
       if (!await animate(id, 160, (t) => { boom = { x: result.x, y: result.y, r: 4 + t * (BLAST - 4) }; })) return;
       boom = null;
       carve(result.x, result.y, BLAST);
-      for (const c of cannons) {
-        if (c === result.hit || Math.hypot(result.x - c.x, result.y - (c.y - CENTER_DY)) < BLAST + 6) c.alive = false;
-      }
+      const damage = cannons.map((c) => {
+        const d = Math.hypot(result.x - c.x, result.y - (c.y - CENTER_DY));
+        return c === result.hit ? DIRECT_DAMAGE : d < SPLASH ? Math.round(SPLASH_DAMAGE * (1 - d / SPLASH)) : 0;
+      });
+      const before = cannons.map((c) => c.y);
       if (!await settle(id)) return;
+      popups = [];
+      cannons.forEach((c, i) => {
+        const dmg = damage[i] + Math.max(0, Math.round((c.y - before[i] - 10) / 3));
+        if (!dmg) return;
+        c.hp = Math.max(0, c.hp - dmg);
+        c.alive = c.hp > 0;
+        popups.push({ c, text: `−${dmg}`, rise: 0 });
+      });
+      if (popups.length) {
+        if (!await animate(id, 700, (t) => { for (const p of popups) p.rise = t; })) return;
+        popups = [];
+      }
     }
 
     const other = cannons[1 - turn];
@@ -354,7 +374,17 @@
       ctx.globalAlpha = 1;
     }
 
+    ctx.font = "700 20px 'Source Sans 3', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    for (const p of popups) {
+      ctx.fillStyle = p.c.color;
+      ctx.globalAlpha = 1 - p.rise * 0.6;
+      ctx.fillText(p.text, p.c.x, p.c.y - PIVOT_DY - BARREL - 10 - p.rise * 30);
+    }
+    ctx.globalAlpha = 1;
+
     drawWind();
+    drawHealth();
     if (message) {
       ctx.fillStyle = colors.ink;
       ctx.font = `600 ${over ? 30 : 20}px Rokkitt, Georgia, serif`;
@@ -419,6 +449,23 @@
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y);
     ctx.moveTo(x1 - Math.sign(wind) * 7, y - 5); ctx.lineTo(x1, y); ctx.lineTo(x1 - Math.sign(wind) * 7, y + 5);
     ctx.stroke();
+  }
+
+  // Each player's name and health bar, in their own top corner.
+  function drawHealth() {
+    const bw = 140, bh = 10, y = 34;
+    ctx.font = "600 14px 'Source Sans 3', system-ui, sans-serif";
+    cannons.forEach((c, i) => {
+      const x = i === 0 ? 16 : W - 16 - bw;
+      ctx.fillStyle = colors.edge;
+      ctx.textAlign = i === 0 ? "left" : "right";
+      ctx.fillText(`${c.name} ${c.hp}`, i === 0 ? x : x + bw, y - 8);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(x, y, (bw * c.hp) / MAX_HP, bh);
+      ctx.strokeStyle = colors.edge;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x, y, bw, bh);
+    });
   }
 
   // --- Helpers ---
