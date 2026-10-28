@@ -314,7 +314,8 @@ def test_prep_question_bank_and_text_answer(client):
     app_id = _create_app(client)
     resp = client.post(f"/prep/{q_id}/answers", data={"body": "I wanted to grow.", "application_id": str(app_id)}, follow_redirects=False)
     assert resp.status_code == 303
-    assert "I wanted to grow." in client.get(f"/prep/{q_id}").text
+    page = client.get(f"/prep/{q_id}").text
+    assert "I wanted to grow." in page and "4 words" in page and "~0:02 to say" in page
     assert "Why did you leave Initech?" in client.get(f"/applications/{app_id}").text
     assert client.post(f"/prep/{q_id}/answers", data={"body": ""}).status_code == 422
 

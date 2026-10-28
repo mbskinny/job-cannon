@@ -1,6 +1,8 @@
 {# One practice answer. A pending transcription polls until it finishes. #}
 {% set pending = a.transcript_status == 'pending' %}
 {% set words = a.body.split()|length %}
+{# Estimated speaking time at a normal pace of 150 words per minute. #}
+{% set spoken = (words * 60 / 150)|round|int %}
 {% set next = next or '/prep/%d#answer-%d' % (a.question_id, a.id) %}
 <li id="answer-{{ a.id }}" class="answer{% if a.best %} best{% endif %}"
     {% if pending %}hx-get="/prep/answers/{{ a.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
@@ -13,7 +15,7 @@
     <small class="muted">{{ a.created_at[:16]|replace('T', ' ') }} UTC</small>
     {% if a.application_id %}<small>· for <a href="/applications/{{ a.application_id }}">{{ a.company_name }} — {{ a.application_role }}</a></small>{% endif %}
     {% if a.duration_seconds %}<small class="muted">· {{ (a.duration_seconds // 60)|int }}:{{ '%02d'|format((a.duration_seconds % 60)|int) }}</small>{% endif %}
-    {% if words %}<small class="muted">· {{ words }} words{% if a.mode == 'voice' and a.duration_seconds and a.transcript_status == 'done' %}, {{ (words * 60 / a.duration_seconds)|round|int }} wpm{% endif %}</small>{% endif %}
+    {% if words %}<small class="muted">· {{ words }} words{% if a.mode == 'voice' and a.duration_seconds and a.transcript_status == 'done' %}, {{ (words * 60 / a.duration_seconds)|round|int }} wpm{% elif not a.duration_seconds %}, <span title="Estimated at 150 words per minute">~{{ spoken // 60 }}:{{ '%02d'|format(spoken % 60) }} to say</span>{% endif %}</small>{% endif %}
   </div>
   {% if a.audio_stored_name %}<audio controls preload="metadata" src="/prep/answers/{{ a.id }}/audio"></audio>{% endif %}
   {% if pending %}
