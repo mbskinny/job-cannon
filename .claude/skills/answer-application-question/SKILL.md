@@ -1,6 +1,6 @@
 ---
 name: answer-application-question
-description: Help the user answer a question from a job application form ("Why do you want to work here?", "Describe a project you're proud of", "What are your salary expectations?", short free-text or yes/no screening questions), grounded in their résumé and, if given, one application from their Job Cannon tracker. Use whenever the user pastes an application-form question or asks for help answering one, even if they don't name the skill or Job Cannon.
+description: Help the user answer a question from a job application form ("Why do you want to work here?", "Describe a project you're proud of", "What are your salary expectations?", short free-text or yes/no screening questions), grounded in their résumé, their interview prep answers and, if given, one application from their Job Cannon tracker. Use whenever the user pastes an application-form question or asks for help answering one, even if they don't name the skill or Job Cannon.
 argument-hint: "[application id] [question]"
 ---
 
@@ -30,6 +30,13 @@ If no id was given but the question or conversation names a company, find it wit
 - **Posting**: only fetch `posting_url` when the question is about the role or company ("why us", "how does your experience match") and the application notes aren't enough. WebFetch, or for LinkedIn the user's Chrome (claude-in-chrome, new tab, `https://www.linkedin.com/jobs/view/<id>/`). **Read only**: never click Apply or anything that sends something.
 - **Already-written material**: the cover letter draft and any `cover_letter` attachment (Read the PDF path). Keep the answer consistent with what the user has sent or will send, but don't copy whole paragraphs from the letter; forms often go to the same reader.
 - **Interactions**: what a recruiter or interviewer said is often the best evidence for "why this role".
+- **Interview prep answers**: the user may already have answered a similar question while practising. List the bank (read-only):
+
+  ```sh
+  uv run python .claude/skills/answer-application-question/scripts/prep_answers.py list
+  ```
+
+  It prints JSON: each question with its `tags`, `notes` and `answers` (typed, or transcripts of recorded ones). Pick the questions that ask the same thing, by meaning rather than wording ("a project you're proud of" ≈ "your biggest achievement"; "a conflict at work" ≈ "disagreeing with a manager"). Prefer answers marked `best`, then those linked to this application (`application_id`), then the most recent. They are the user's own stories and phrasing, so build on them, but they are practice material: check every fact against the résumé and notes as usual, and spoken transcripts need tidying for a written form.
 
 ## 3. Write the answer
 
@@ -43,6 +50,17 @@ If no id was given but the question or conversation names a company, find it wit
 
 ## 4. Present
 
-Show the answer in a block the user can copy, with its word/character count when there's a limit. Below it, in a few short bullets, list which résumé items or application facts each claim rests on, so the user can check them. State that nothing was saved or submitted.
+Show the answer in a block the user can copy, with its word/character count when there's a limit. Below it, in a few short bullets, list which résumé items, application facts or prep answers (by question) each claim rests on, so the user can check them. State that nothing was saved or submitted.
 
-If the user wants to keep the answer, offer to log it on the application as a `note` interaction in the app (http://127.0.0.1:8765/applications/<APP_ID>); don't write to the database yourself unless they ask.
+For an open question (not a factual or eligibility one), offer to save the answer to the interview prep bank so it can be reused and practised. Don't save unless the user says yes. Then write the final text to a temporary file and run:
+
+```sh
+# under a matching prep question from the list above
+uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --question <QUESTION_ID> [--app <APP_ID>]
+# or as a new question, worded generically (not "Why Acme?" but "Why do you want to work here?") with a few lowercase tags
+uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --new-question "<QUESTION>" --tags "behavioral,conflict" [--app <APP_ID>]
+```
+
+Pass `--app` when the answer is specific to the application. The script backs the profile up first and prints the prep page link; give the user that link. Pass `--profile` here too if you used it above.
+
+If the user would rather keep it on the application, offer to log it as a `note` interaction in the app (http://127.0.0.1:8765/applications/<APP_ID>); don't write that to the database yourself.
