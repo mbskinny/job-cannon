@@ -46,6 +46,13 @@
   const DIRECT_DAMAGE = 45;
   const SPLASH = BLAST + 30;
   const SPLASH_DAMAGE = 35;
+  // Power-ups: a crate floats over the field now and then, and a ball that flies through it collects it for the shooter.
+  // Repair heals at once; Big shot and Sights are held for the shooter's next shot (one at a time, a new one replaces it).
+  const CRATE = 13;              // crate half-size; the ball collects it within CRATE + 4
+  const CRATE_CHANCE = 0.4;      // chance a crate appears at the start of a turn, when there isn't one
+  const PERKS = { repair: "Repair", big: "Big shot", sights: "Sights" };
+  const REPAIR = 25;
+  const BIG = 1.5;               // Big shot's blast radius and damage multiplier
   // Cannons are the header logo (templates/partials/logo.html), drawn in its 120-unit space at LOGO_SCALE px per unit.
   // A cannon's (x, y) is where its wheel touches the ground: logo point (50, 103.5).
   const LOGO_SCALE = 0.7;
@@ -61,7 +68,7 @@
   const SPOKES_PATH = new Path2D("M50 70 V98 M36 84 H64 M40.1 74.1 L59.9 93.9 M59.9 74.1 L40.1 93.9");
 
   let dlg, canvas, ctx, els, colors;
-  let ground, cannons, turn, wind, ball, trail, boom, popups, message, busy, over, cpuError, gameId = 0, qIndex = -1;
+  let ground, cannons, turn, wind, ball, trail, boom, popups, crate, aim, message, busy, over, cpuError, gameId = 0, qIndex = -1;
 
   // --- Trigger: a single click on the logo still navigates, a double-click opens the game. ---
   let navTimer;
@@ -167,9 +174,9 @@
       { x: inset(), dir: 1, angle: 45, power: 60, color: colors.p1, name: isCpu() ? "You" : "Player 1", trail: null },
       { x: W - inset(), dir: -1, angle: 45, power: 60, color: colors.p2, name: isCpu() ? "Computer" : "Player 2", trail: null },
     ];
-    for (const c of cannons) { flatten(c.x); c.y = restY(c.x); c.hp = MAX_HP; c.alive = true; }
+    for (const c of cannons) { flatten(c.x); c.y = restY(c.x); c.hp = MAX_HP; c.alive = true; c.perk = null; }
     turn = Math.random() < 0.5 ? 0 : 1;
-    over = false; busy = false; ball = null; boom = null; popups = []; cpuError = 20;
+    over = false; busy = false; ball = null; boom = null; popups = []; crate = null; aim = null; cpuError = 20;
     nextQuestion();
     startTurn();
   }
@@ -201,6 +208,7 @@
 
   function startTurn() {
     wind = Math.round((Math.random() * 2 - 1) * MAX_WIND);
+    if (!crate && Math.random() < CRATE_CHANCE) spawnCrate();
     if (isCpu() && turn === 1) {
       busy = true;
       message = "Computer is aiming…";
@@ -236,6 +244,17 @@
     if (id === gameId) fire();
   }
 
+  // Somewhere between the cannons, clear of the top-of-screen text and well above the ground.
+  function spawnCrate() {
+    const lo = Math.min(cannons[0].x, cannons[1].x) + 80, hi = Math.max(cannons[0].x, cannons[1].x) - 80;
+    if (hi <= lo) return;
+    const x = Math.round(lo + Math.random() * (hi - lo));
+    const top = 80, bottom = ground[x] - 60;
+    if (bottom <= top) return;
+    const kinds = Object.keys(PERKS);
+    crate = { x, y: Math.round(top + Math.random() * (bottom - top)), kind: kinds[Math.floor(Math.random() * kinds.length)] };
+  }
+
   // --- Physics, shared by the animation and the computer's aiming. ---
   function muzzle(c, angle) {
     const a = (angle * Math.PI) / 180;
@@ -246,50 +265,72 @@
     const m = muzzle(shooter, angle);
     let x = m.x, y = m.y;
     let vx = Math.cos(m.a) * power * SPEED_PER_POWER * shooter.dir, vy = -Math.sin(m.a) * power * SPEED_PER_POWER;
+    let pickup = -1;               // index into path where the ball reaches the crate
     for (let i = 0; i < 40000; i++) {
       vx += windAccel * DT; vy += G * DT;
       x += vx * DT; y += vy * DT;
       if (path && i % STEPS_PER_FRAME === 0) path.push([x, y]);
-      if (x < 0 || x >= W || y >= H) return { hit: "out", x, y };
-      for (const c of cannons) if (c.alive && Math.hypot(x - c.x, y - (c.y - CENTER_DY)) < HITBOX) return { hit: c, x, y };
-      if (y >= ground[Math.floor(x)]) return { hit: "ground", x, y };
+      if (crate && pickup < 0 && Math.hypot(x - crate.x, y - crate.y) < CRATE + 4) pickup = Math.floor(i / STEPS_PER_FRAME);
+      if (x < 0 || x >= W || y >= H) return { hit: "out", x, y, pickup };
+      for (const c of cannons) if (c.alive && Math.hypot(x - c.x, y - (c.y - CENTER_DY)) < HITBOX) return { hit: c, x, y, pickup };
+      if (y >= ground[Math.floor(x)]) return { hit: "ground", x, y, pickup };
     }
-    return { hit: "out", x, y };
+    return { hit: "out", x, y, pickup };
   }
 
   async function fire() {
     const id = gameId, shooter = current();
     busy = true;
     message = "";
+    aim = null;
+    const mult = shooter.perk === "big" ? BIG : 1;
+    if (shooter.perk === "big" || shooter.perk === "sights") shooter.perk = null;
     const path = [];
     const result = simulate(shooter, shooter.angle, shooter.power, wind, path);
     shooter.trail = path;
+    const got = result.pickup >= 0 ? crate : null;
     // Path points are one 60 Hz frame apart; play them back in real time whatever the display's refresh rate.
-    if (!await animate(id, (path.length * 1000) / 60, (t) => { ball = path[Math.min(path.length - 1, Math.floor(t * path.length))]; })) return;
+    if (!await animate(id, (path.length * 1000) / 60, (t) => {
+      const i = Math.min(path.length - 1, Math.floor(t * path.length));
+      ball = path[i];
+      if (got && i >= result.pickup) crate = null;
+    })) return;
     ball = null;
+    if (got) crate = null;
+    popups = [];
+    const popup = (x, y, color, text) => popups.push({ x, y, color, text, rise: 0 });
+    const above = (c) => c.y - PIVOT_DY - BARREL - 10;
+    if (got) popup(got.x, got.y - CRATE - 8, shooter.color, PERKS[got.kind]);
 
     if (result.hit !== "out") {
-      if (!await animate(id, 160, (t) => { boom = { x: result.x, y: result.y, r: 4 + t * (BLAST - 4) }; })) return;
+      const blast = BLAST * mult, splash = SPLASH * mult;
+      if (!await animate(id, 160, (t) => { boom = { x: result.x, y: result.y, r: 4 + t * (blast - 4) }; })) return;
       boom = null;
-      carve(result.x, result.y, BLAST);
+      carve(result.x, result.y, blast);
       const damage = cannons.map((c) => {
         const d = Math.hypot(result.x - c.x, result.y - (c.y - CENTER_DY));
-        return c === result.hit ? DIRECT_DAMAGE : d < SPLASH ? Math.round(SPLASH_DAMAGE * (1 - d / SPLASH)) : 0;
+        return Math.round(mult * (c === result.hit ? DIRECT_DAMAGE : d < splash ? SPLASH_DAMAGE * (1 - d / splash) : 0));
       });
       const before = cannons.map((c) => c.y);
       if (!await settle(id)) return;
-      popups = [];
       cannons.forEach((c, i) => {
         const dmg = damage[i] + Math.max(0, Math.round((c.y - before[i] - 10) / 3));
         if (!dmg) return;
         c.hp = Math.max(0, c.hp - dmg);
         c.alive = c.hp > 0;
-        popups.push({ c, text: `−${dmg}`, rise: 0 });
+        popup(c.x, above(c), c.color, `−${dmg}`);
       });
-      if (popups.length) {
-        if (!await animate(id, 700, (t) => { for (const p of popups) p.rise = t; })) return;
-        popups = [];
-      }
+    }
+    if (got && shooter.alive) {
+      if (got.kind === "repair") {
+        const heal = Math.min(REPAIR, MAX_HP - shooter.hp);
+        shooter.hp += heal;
+        if (heal) popup(shooter.x, above(shooter), shooter.color, `+${heal}`);
+      } else shooter.perk = got.kind;
+    }
+    if (popups.length) {
+      if (!await animate(id, 700, (t) => { for (const p of popups) p.rise = t; })) return;
+      popups = [];
     }
 
     const other = cannons[1 - turn];
@@ -361,6 +402,13 @@
     ctx.lineWidth = 2;
     ctx.stroke();
 
+    if (aim) {
+      ctx.fillStyle = current().color;
+      for (let i = 0; i < aim.length; i += 3) {
+        ctx.beginPath(); ctx.arc(aim[i][0], aim[i][1], 2, 0, 7); ctx.fill();
+      }
+    }
+    if (crate) drawCrate();
     cannons.forEach(drawCannon);
 
     if (ball) {
@@ -377,9 +425,9 @@
     ctx.font = "700 20px 'Source Sans 3', system-ui, sans-serif";
     ctx.textAlign = "center";
     for (const p of popups) {
-      ctx.fillStyle = p.c.color;
+      ctx.fillStyle = p.color;
       ctx.globalAlpha = 1 - p.rise * 0.6;
-      ctx.fillText(p.text, p.c.x, p.c.y - PIVOT_DY - BARREL - 10 - p.rise * 30);
+      ctx.fillText(p.text, p.x, p.y - p.rise * 30);
     }
     ctx.globalAlpha = 1;
 
@@ -451,7 +499,25 @@
     ctx.stroke();
   }
 
-  // Each player's name and health bar, in their own top corner.
+  // A brass box with the power-up's symbol and, below it, its name.
+  function drawCrate() {
+    const { x, y, kind } = crate, s = CRATE;
+    ctx.fillStyle = colors.brass;
+    ctx.strokeStyle = colors.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(x - s, y - s, 2 * s, 2 * s, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = ctx.strokeStyle = colors.ink;
+    ctx.beginPath();
+    if (kind === "repair") { ctx.fillRect(x - 2, y - 7, 4, 14); ctx.fillRect(x - 7, y - 2, 14, 4); }
+    else if (kind === "big") { ctx.arc(x, y, 7, 0, 7); ctx.fill(); }
+    else { ctx.arc(x, y, 6, 0, 7); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9); ctx.stroke(); }
+    ctx.fillStyle = colors.edge;
+    ctx.font = "600 12px 'Source Sans 3', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(PERKS[kind], x, y + s + 14);
+  }
+
+  // Each player's name and health bar, in their own top corner, with any power-up they hold below.
   function drawHealth() {
     const bw = 140, bh = 10, y = 34;
     ctx.font = "600 14px 'Source Sans 3', system-ui, sans-serif";
@@ -465,6 +531,10 @@
       ctx.strokeStyle = colors.edge;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x, y, bw, bh);
+      if (c.perk) {
+        ctx.fillStyle = colors.edge;
+        ctx.fillText(`${PERKS[c.perk]} ready`, i === 0 ? x : x + bw, y + bh + 16);
+      }
     });
   }
 
@@ -474,6 +544,12 @@
     els.angle.value = c.angle; els.power.value = c.power;
     els.angleOut.value = c.angle; els.powerOut.value = c.power;
     const locked = !canAim();
+    aim = null;
+    if (!locked && c.perk === "sights") {
+      aim = [];
+      simulate(c, c.angle, c.power, wind, aim);
+      aim.length = Math.ceil(aim.length * 0.4);
+    }
     els.angle.disabled = els.power.disabled = els.fire.disabled = locked;
     draw();
   }
