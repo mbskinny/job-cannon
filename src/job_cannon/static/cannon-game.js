@@ -39,6 +39,10 @@
   const STEPS_PER_FRAME = 4;
   const SPEED_PER_POWER = 6;     // px/s per power point
   const MAX_WIND = 40;           // px/s² either way
+  // Streamers on poles between the cannons show the wind: limp in a calm, nearly level and rippling fast in a gale.
+  const STREAMER_POLES = [W / 2 - 140, W / 2 + 140];   // clear of both cannons, which sit within 220 px of their edge
+  const POLE = 34;
+  const STREAMER = 30;
   const BLAST = 28;              // crater radius
   // Damage, out of MAX_HP: a direct hit takes DIRECT_DAMAGE, a burst within SPLASH px of a cannon up to SPLASH_DAMAGE
   // (less the further off it lands), and a cannon whose ground is blown away takes 1 per 3 px it falls past the first 10.
@@ -67,7 +71,7 @@
   const BARREL_PATH = new Path2D("M34 60 L93 63 L93 79 L34 82 Z");
   const SPOKES_PATH = new Path2D("M50 70 V98 M36 84 H64 M40.1 74.1 L59.9 93.9 M59.9 74.1 L40.1 93.9");
 
-  let dlg, canvas, ctx, els, colors;
+  let dlg, canvas, ctx, els, colors, fluttering = false, animating = 0;
   let ground, cannons, turn, wind, ball, trail, boom, popups, crate, aim, message, busy, over, cpuError, gameId = 0, qIndex = -1;
 
   // --- Trigger: a single click on the logo still navigates, a double-click opens the game. ---
@@ -89,6 +93,14 @@
     readColors();
     dlg.showModal();
     newGame();
+    if (!fluttering) { fluttering = true; requestAnimationFrame(flutter); }
+  }
+
+  // Redraws every frame while the dialog is open so the streamers move; animate() does the drawing during shots.
+  function flutter() {
+    if (!dlg.open) { fluttering = false; return; }
+    if (!animating) draw();
+    requestAnimationFrame(flutter);
   }
 
   function build() {
@@ -366,13 +378,18 @@
   // Resolves false if the game was closed or restarted meanwhile.
   async function animate(id, ms, step) {
     const start = performance.now();
-    for (;;) {
-      const t = ms > 0 ? Math.min(1, (performance.now() - start) / ms) : 1;
-      step(t);
-      draw();
-      if (t >= 1) return true;
-      await frame();
-      if (id !== gameId) return false;
+    animating++;
+    try {
+      for (;;) {
+        const t = ms > 0 ? Math.min(1, (performance.now() - start) / ms) : 1;
+        step(t);
+        draw();
+        if (t >= 1) return true;
+        await frame();
+        if (id !== gameId) return false;
+      }
+    } finally {
+      animating--;
     }
   }
 
@@ -408,6 +425,7 @@
         ctx.beginPath(); ctx.arc(aim[i][0], aim[i][1], 2, 0, 7); ctx.fill();
       }
     }
+    STREAMER_POLES.forEach(drawStreamer);
     if (crate) drawCrate();
     cannons.forEach(drawCannon);
 
@@ -497,6 +515,32 @@
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y);
     ctx.moveTo(x1 - Math.sign(wind) * 7, y - 5); ctx.lineTo(x1, y); ctx.lineTo(x1 - Math.sign(wind) * 7, y + 5);
     ctx.stroke();
+  }
+
+  // A pole planted in the ground (it sinks into any crater) with a ribbon blowing off its top. The ribbon swings
+  // from hanging straight down to nearly level as the wind rises, and ripples faster and wider.
+  function drawStreamer(px) {
+    const base = ground[px], top = base - POLE;
+    ctx.strokeStyle = colors.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px, base); ctx.lineTo(px, top); ctx.stroke();
+
+    const s = Math.abs(wind) / MAX_WIND, dir = Math.sign(wind) || 1, t = performance.now() / 1000;
+    const lean = s * 1.4, speed = 3 + 12 * s, ripple = 0.12 + 0.3 * s, segs = 10, seg = STREAMER / segs;
+    let x = px, y = top + 2;
+    ctx.strokeStyle = colors.brass;
+    ctx.lineCap = "round";
+    for (let i = 1; i <= segs; i++) {
+      const f = i / segs;
+      const a = lean + ripple * f * Math.sin(t * speed - f * 5 + px);   // angle from hanging straight down
+      const nx = x + dir * Math.sin(a) * seg, ny = y + Math.cos(a) * seg;
+      ctx.lineWidth = 6 * (1 - f) + 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(nx, ny); ctx.stroke();
+      x = nx; y = ny;
+    }
+    ctx.lineCap = "butt";
+    ctx.fillStyle = colors.ink;
+    ctx.beginPath(); ctx.arc(px, top, 2.5, 0, 7); ctx.fill();
   }
 
   // A brass box with the power-up's symbol and, below it, its name.
