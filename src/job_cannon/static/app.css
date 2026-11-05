@@ -239,6 +239,7 @@ th { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spac
   font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; line-height: 1.6;
   color: var(--jc-c, var(--jc-wishlist)); white-space: nowrap; }
 .badge.kind { --jc-c: var(--jc-withdrawn); }
+.badge.ai-draft { --jc-c: var(--jc-brass-text); background: color-mix(in srgb, var(--jc-brass) 22%, transparent); border-color: var(--jc-brass); }
 .status-wishlist { --jc-c: var(--jc-wishlist); }
 .status-applied { --jc-c: var(--jc-applied); }
 .status-screening { --jc-c: var(--jc-screening); }

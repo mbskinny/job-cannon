@@ -205,15 +205,16 @@ def answers_for_application(conn, app_id: int) -> list[sqlite3.Row]:
     ).fetchall()
 
 
-def add_text_answer(conn, question_id: int, body: str, application_id=None) -> int:
+def add_text_answer(conn, question_id: int, body: str, application_id=None, ai_draft: bool = False) -> int:
+    """Add a typed answer. ``ai_draft`` marks one written by an AI (e.g. Claude) rather than the user."""
     body = (body or "").replace("\r\n", "\n").strip()
     if not body:
         raise ValueError("the answer is empty")
     with conn:
         return conn.execute(
-            "INSERT INTO prep_answers (question_id, application_id, mode, body, created_at, updated_at)"
-            " VALUES (?, ?, 'text', ?, ?, ?)",
-            (question_id, _opt_id(application_id), body, now(), now()),
+            "INSERT INTO prep_answers (question_id, application_id, mode, body, ai_draft, created_at, updated_at)"
+            " VALUES (?, ?, 'text', ?, ?, ?, ?)",
+            (question_id, _opt_id(application_id), body, int(bool(ai_draft)), now(), now()),
         ).lastrowid
 
 
@@ -256,11 +257,16 @@ def set_transcript(conn, answer_id: int, text: str) -> None:
         )
 
 
-def update_answer(conn, answer_id: int, body: str, application_id=None) -> None:
+def update_answer(conn, answer_id: int, body: str, application_id=None, ai_draft: bool | None = None) -> None:
+    """Update an answer's text and application; ``ai_draft`` is left as it was when None."""
     with conn:
         conn.execute(
-            "UPDATE prep_answers SET body = ?, application_id = ?, updated_at = ? WHERE id = ?",
-            ((body or "").replace("\r\n", "\n").strip(), _opt_id(application_id), now(), answer_id),
+            "UPDATE prep_answers SET body = ?, application_id = ?, ai_draft = COALESCE(?, ai_draft), updated_at = ?"
+            " WHERE id = ?",
+            (
+                (body or "").replace("\r\n", "\n").strip(), _opt_id(application_id),
+                None if ai_draft is None else int(bool(ai_draft)), now(), answer_id,
+            ),
         )
 
 

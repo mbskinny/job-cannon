@@ -2,14 +2,14 @@
 
 Usage (from the repo root):
     uv run python .claude/skills/answer-application-question/scripts/prep_answers.py list
-    uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --question ID [--app APP_ID]
-    uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --new-question TEXT [--tags a,b] [--app APP_ID]
+    uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --question ID [--app APP_ID] [--ai-draft]
+    uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --new-question TEXT [--tags a,b] [--app APP_ID] [--ai-draft]
 
 list prints every prep question with its tags, notes and answers as JSON
 (answers without text yet, e.g. a recording still being transcribed, are left
 out). save stores the text as a typed answer, under an existing question or a
 new one (reusing a question with the same wording if there is one), optionally
-linked to an application. Data folder and profile resolve the same way as the
+linked to an application; --ai-draft marks it as written by AI. Data folder and profile resolve the same way as the
 app: --data-dir, then JOB_CANNON_DATA, then ~/JobCannon; --profile, then
 JOB_CANNON_PROFILE, then the active profile.
 """
@@ -22,7 +22,7 @@ import sys
 from job_cannon import db, profiles
 from job_cannon.repo import applications, prep
 
-ANSWER_FIELDS = ["id", "mode", "body", "best", "application_id", "company_name", "application_role", "created_at"]
+ANSWER_FIELDS = ["id", "mode", "body", "best", "ai_draft", "application_id", "company_name", "application_role", "created_at"]
 
 
 def main() -> int:
@@ -38,6 +38,7 @@ def main() -> int:
     target.add_argument("--new-question", help="wording of a question to add")
     p_save.add_argument("--tags", default="", help="comma-separated tags for a new question")
     p_save.add_argument("--app", type=int, help="application id to link the answer to")
+    p_save.add_argument("--ai-draft", action="store_true", help="mark the answer as an AI-generated draft")
     p_save.add_argument("--no-backup", action="store_true")
     args = p.parse_args()
 
@@ -96,7 +97,7 @@ def main() -> int:
         wording = " ".join(args.new_question.split())
         same = [q for q in prep.list_questions(conn) if q["prompt"].casefold() == wording.casefold()]
         question_id = same[0]["id"] if same else prep.create_question(conn, wording, tags=args.tags)
-    answer_id = prep.add_text_answer(conn, question_id, body, args.app)
+    answer_id = prep.add_text_answer(conn, question_id, body, args.app, ai_draft=args.ai_draft)
     question = prep.get_question(conn, question_id)
     print(f"saved answer {answer_id} to prep question {question_id} in profile {profile.name}: {question['prompt']}")
     print(f"http://127.0.0.1:8765/prep/{question_id}")

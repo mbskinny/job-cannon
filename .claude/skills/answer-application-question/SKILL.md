@@ -36,7 +36,7 @@ If no id was given but the question or conversation names a company, find it wit
   uv run python .claude/skills/answer-application-question/scripts/prep_answers.py list
   ```
 
-  It prints JSON: each question with its `tags`, `notes` and `answers` (typed, or transcripts of recorded ones). Pick the questions that ask the same thing, by meaning rather than wording ("a project you're proud of" ≈ "your biggest achievement"; "a conflict at work" ≈ "disagreeing with a manager"). Prefer answers marked `best`, then those linked to this application (`application_id`), then the most recent. They are the user's own stories and phrasing, so build on them, but they are practice material: check every fact against the résumé and notes as usual, and spoken transcripts need tidying for a written form.
+  It prints JSON: each question with its `tags`, `notes` and `answers` (typed, or transcripts of recorded ones). Pick the questions that ask the same thing, by meaning rather than wording ("a project you're proud of" ≈ "your biggest achievement"; "a conflict at work" ≈ "disagreeing with a manager"). Prefer answers marked `best`, then those linked to this application (`application_id`), then the most recent. Answers with `ai_draft: 1` were written by Claude, not the user: use them for content, but take the user's voice from their own answers. The others are the user's own stories and phrasing, so build on them, but they are practice material: check every fact against the résumé and notes as usual, and spoken transcripts need tidying for a written form.
 
 ## 3. Write the answer
 
@@ -52,13 +52,13 @@ If no id was given but the question or conversation names a company, find it wit
 
 Show the answer in a block the user can copy, with its word/character count when there's a limit. Below it, in a few short bullets, list which résumé items, application facts or prep answers (by question) each claim rests on, so the user can check them. State that nothing was saved or submitted.
 
-For an open question (not a factual or eligibility one), offer to save the answer to the interview prep bank so it can be reused and practised. Don't save unless the user says yes. Then write the final text to a temporary file and run:
+For an open question (not a factual or eligibility one), offer to save the answer to the interview prep bank so it can be reused and practised. Don't save unless the user says yes. Then write the final text to a temporary file and run the command below. Pass `--ai-draft` whenever you wrote the answer: it marks it as written by Claude (the app shows an "AI draft" badge, and the user unticks it once the answer is in their own words). Leave it off only when the text is essentially the user's own, e.g. one of their prep answers or a transcript with light tidying. Don't note any of this in the text itself.
 
 ```sh
 # under a matching prep question from the list above
-uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --question <QUESTION_ID> [--app <APP_ID>]
+uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --ai-draft --question <QUESTION_ID> [--app <APP_ID>]
 # or as a new question, worded generically (not "Why Acme?" but "Why do you want to work here?") with a few lowercase tags
-uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --new-question "<QUESTION>" --tags "behavioral,conflict" [--app <APP_ID>]
+uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --ai-draft --new-question "<QUESTION>" --tags "behavioral,conflict" [--app <APP_ID>]
 ```
 
 Pass `--app` when the answer is specific to the application. The script backs the profile up first and prints the prep page link; give the user that link. Pass `--profile` here too if you used it above.

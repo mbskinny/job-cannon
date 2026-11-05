@@ -38,6 +38,7 @@
         <label>…or type it
           <textarea name="body" rows="8" placeholder="Write your answer…">{{ draft or '' }}</textarea>
         </label>
+        <label><input type="checkbox" name="ai_draft" value="1" id="new-answer-ai-draft" {% if draft_ai %}checked{% endif %}> AI-generated draft</label>
         <button type="submit" class="secondary">Save answer</button>
       </form>
     </article>

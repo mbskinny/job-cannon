@@ -93,7 +93,7 @@
         {% for a in prep_answers %}
         <li>
           <a href="/prep/{{ a.question_id }}#answer-{{ a.id }}">{{ a.prompt }}</a>{% if a.best %} <span title="Best answer">★</span>{% endif %}<br>
-          <small class="muted">{{ 'Recorded' if a.mode == 'voice' else 'Typed' }} · {{ a.created_at[:10] }}{% if a.body %} · {{ a.body|truncate(90) }}{% endif %}</small>
+          <small class="muted">{{ 'Recorded' if a.mode == 'voice' else 'Typed' }}{% if a.ai_draft %} · AI draft{% endif %} · {{ a.created_at[:10] }}{% if a.body %} · {{ a.body|truncate(90) }}{% endif %}</small>
         </li>
         {% endfor %}
       </ul>

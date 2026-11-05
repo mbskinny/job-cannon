@@ -325,6 +325,39 @@ def test_prep_question_bank_and_text_answer(client):
     assert client.get(f"/prep/{q_id}").status_code == 404
 
 
+def test_prep_answer_marked_ai_draft(client):
+    resp = client.post("/prep", data={"prompt": "Why us?"}, follow_redirects=False)
+    q_id = int(re.search(r"/prep/(\d+)$", resp.headers["location"]).group(1))
+    assert 'name="ai_draft"' in client.get(f"/prep/{q_id}").text
+    assert "AI draft</span>" not in client.get(f"/prep/{q_id}").text
+
+    app_id = _create_app(client)
+    resp = client.post(
+        f"/prep/{q_id}/answers", data={"body": "Drafted by Claude.", "ai_draft": "1", "application_id": str(app_id)},
+        follow_redirects=False,
+    )
+    a_id = int(resp.headers["location"].rsplit("-", 1)[1])
+    page = client.get(f"/prep/{q_id}").text
+    assert "AI draft</span>" in page and 'name="ai_draft" value="1" checked' in page
+    assert "Typed · AI draft ·" in client.get(f"/applications/{app_id}").text
+
+    # A form without the checkbox (e.g. a tab opened before the feature) leaves the mark alone.
+    client.post(f"/prep/answers/{a_id}", data={"body": "Edited.", "application_id": str(app_id)})
+    assert "AI draft</span>" in client.get(f"/prep/{q_id}").text
+
+    # Saving the edit form with the box unticked clears the mark.
+    client.post(
+        f"/prep/answers/{a_id}", data={"body": "Now in my own words.", "application_id": str(app_id), "ai_draft_shown": "1"},
+    )
+    page = client.get(f"/prep/{q_id}").text
+    assert "AI draft</span>" not in page and "Now in my own words." in page
+
+    # A failed save keeps the new answer's box ticked.
+    page = client.post(f"/prep/{q_id}/answers", data={"body": " ", "ai_draft": "1"}).text
+    assert 'id="new-answer-ai-draft" checked' in page
+    assert re.search(r'id="new-answer-ai-draft"\s*>', client.post(f"/prep/{q_id}/answers", data={"body": " "}).text)
+
+
 def test_prep_recorded_answer_transcribed(client, cfg, monkeypatch):
     from job_cannon import transcribe
 

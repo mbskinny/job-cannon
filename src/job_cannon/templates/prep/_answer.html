@@ -12,6 +12,7 @@
       <button class="link star" title="{{ 'Unmark best answer' if a.best else 'Mark as best answer' }}" aria-pressed="{{ 'true' if a.best else 'false' }}">{{ '★' if a.best else '☆' }}</button>
     </form>
     <span class="badge kind">{{ 'Recorded' if a.mode == 'voice' else 'Typed' }}</span>
+    {% if a.ai_draft %}<span class="badge ai-draft" title="Written by AI, not in your own words yet">AI draft</span>{% endif %}
     <small class="muted">{{ a.created_at[:16]|replace('T', ' ') }} UTC</small>
     {% if a.application_id %}<small>· for <a href="/applications/{{ a.application_id }}">{{ a.company_name }} — {{ a.application_role }}</a></small>{% endif %}
     {% if a.duration_seconds %}<small class="muted">· {{ (a.duration_seconds // 60)|int }}:{{ '%02d'|format((a.duration_seconds % 60)|int) }}</small>{% endif %}
@@ -41,6 +42,9 @@
         {% for ap in applications %}<option value="{{ ap.id }}" {% if ap.id == a.application_id %}selected{% endif %}>{{ ap.company_name }} — {{ ap.role }}</option>{% endfor %}
         {% if a.application_id and a.application_id not in applications|map(attribute='id') %}<option value="{{ a.application_id }}" selected>{{ a.company_name }} — {{ a.application_role }}</option>{% endif %}
       </select>
+      {# ai_draft_shown tells the route the box was on the form, so an unticked box clears the mark but a form without it (an old tab) leaves it alone. #}
+      {% if a.mode == 'text' or a.ai_draft %}<input type="hidden" name="ai_draft_shown" value="1">
+      <label><input type="checkbox" name="ai_draft" value="1" {% if a.ai_draft %}checked{% endif %}> AI-generated draft</label>{% endif %}
       <div class="timeline-actions">
         <button type="submit" class="secondary">Save</button>
       </div>

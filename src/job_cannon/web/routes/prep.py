@@ -133,7 +133,9 @@ async def answer_audio(request: Request, answer_id: int):
 async def update_answer(request: Request, answer_id: int):
     row = _answer_or_404(request, answer_id)
     form = await request.form()
-    prep.update_answer(conn(request), answer_id, form.get("body", ""), form.get("application_id", ""))
+    # Only a form that showed the checkbox may clear the mark; otherwise leave it as it was.
+    ai_draft = bool(form.get("ai_draft")) if form.get("ai_draft_shown") else None
+    prep.update_answer(conn(request), answer_id, form.get("body", ""), form.get("application_id", ""), ai_draft=ai_draft)
     return redirect(safe_next(form.get("next"), f"/prep/{row['question_id']}#answer-{answer_id}"))
 
 
@@ -218,12 +220,16 @@ async def delete(request: Request, question_id: int):
 async def add_text_answer(request: Request, question_id: int):
     question = _question_or_404(request, question_id)
     form = await request.form()
+    ai_draft = bool(form.get("ai_draft"))
     try:
-        answer_id = prep.add_text_answer(conn(request), question_id, form.get("body", ""), form.get("application_id", ""))
+        answer_id = prep.add_text_answer(
+            conn(request), question_id, form.get("body", ""), form.get("application_id", ""), ai_draft=ai_draft,
+        )
     except ValueError as exc:
         return detail_page(
             request, question, status_code=422, answer_error=str(exc),
             draft=form.get("body", ""), application=form.get("application_id", ""),
+            draft_ai=ai_draft,
         )
     return redirect(f"/prep/{question_id}#answer-{answer_id}")
 

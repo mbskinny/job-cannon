@@ -328,6 +328,20 @@ def test_prep_tags_parsed_and_filtered(conn):
     assert "conflict" not in [t["name"] for t in prep.list_tags(conn)]  # orphaned tag removed
 
 
+def test_prep_answer_ai_draft_flag(conn):
+    from job_cannon.repo import prep
+
+    q = prep.create_question(conn, "Why us?")
+    mine = prep.add_text_answer(conn, q, "My own words.")
+    draft = prep.add_text_answer(conn, q, "Claude's words.", ai_draft=True)
+    assert prep.get_answer(conn, mine)["ai_draft"] == 0
+    assert prep.get_answer(conn, draft)["ai_draft"] == 1
+    prep.update_answer(conn, draft, "Claude's words, edited.")  # None leaves the flag alone
+    assert prep.get_answer(conn, draft)["ai_draft"] == 1
+    prep.update_answer(conn, draft, "Now in my words.", ai_draft=False)
+    assert prep.get_answer(conn, draft)["ai_draft"] == 0
+
+
 def test_prep_answers_and_cleanup(conn):
     from job_cannon.repo import prep
 
