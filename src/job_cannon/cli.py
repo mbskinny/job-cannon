@@ -1,4 +1,4 @@
-"""Command line entry point: ``job-cannon [serve|backup|profiles|resume-text]``."""
+"""Command line entry point: ``job-cannon [serve|backup|profiles|resume-text|mcp]``."""
 
 import argparse
 import json
@@ -171,8 +171,12 @@ def main(argv: list[str] | None = None) -> None:
         "resume-text", help="print the profile's résumé as text (.docx/.odt/.txt/.md; prints the URL or PDF path otherwise)"
     )
 
+    p_mcp = sub.add_parser(
+        "mcp", help="run the MCP server over stdio, for Claude (needs: uv sync --extra mcp)"
+    )
+
     # Accept --data-dir and --profile after the subcommand too (job-cannon serve --data-dir X).
-    for p in (p_serve, p_backup, p_profiles, p_resume):
+    for p in (p_serve, p_backup, p_profiles, p_resume, p_mcp):
         p.add_argument("--data-dir", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
         p.add_argument("--profile", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
 
@@ -184,7 +188,14 @@ def main(argv: list[str] | None = None) -> None:
     except ValueError as exc:
         raise SystemExit(str(exc))
 
-    if args.command == "profiles":
+    if args.command == "mcp":
+        try:
+            from job_cannon import mcp_server
+        except ImportError:
+            raise SystemExit("The MCP server needs the mcp extra: uv sync --extra mcp")
+        # The profile is resolved on every call, so the active one can change while it runs.
+        mcp_server.run(root, profile)
+    elif args.command == "profiles":
         profiles_command(root, selected, args)
     elif args.command == "resume-text":
         resume_text_command(root, selected)

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "job-cannon": {
+      "command": "uv",
+      "args": ["run", "--quiet", "--extra", "mcp", "job-cannon", "mcp"]
+    }
+  }
+}
