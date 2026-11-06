@@ -362,6 +362,10 @@ h1.prep-prompt { font-size: 1.8rem; }
 .read-settings { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: var(--pico-spacing); font-size: 0.9rem; }
 .read-settings label { flex: 1 1 10rem; margin: 0; }
 .read-settings select { margin: 0.2rem 0 0; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+button.tag-pill { all: unset; cursor: pointer; padding: 0 0.2rem; border-radius: 3px; color: var(--jc-brass-text); font-size: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+button.tag-pill:hover { background: var(--jc-sunken); color: var(--jc-ink); text-decoration: none; }
+button.tag-pill:focus-visible { outline: 2px solid var(--pico-primary-focus); outline-offset: 1px; }
+button.tag-pill[aria-pressed=true] { color: var(--jc-muted); text-decoration: none; opacity: 0.6; }
 button.link.star { font-size: 1.1rem; line-height: 1; color: var(--jc-brass-text); }
 
 /* Easter egg: the cannon duel (static/cannon-game.js), opened by double-clicking the logo. */

@@ -8,8 +8,8 @@
     <textarea name="prompt" rows="2" required {% if not question %}autofocus{% endif %} placeholder="Tell me about a time you…">{{ values.prompt or '' }}</textarea>
   </label>
   <label>Tags
-    <input name="tags" value="{{ values.tags or '' }}" list="prep-tags" placeholder="behavioral, leadership" autocomplete="off">
-    <small>Separate tags with commas.{% if all_tags %} In use: {% for t in all_tags %}<code>{{ t.name }}</code> {% endfor %}{% endif %}</small>
+    <input name="tags" id="question-tags" value="{{ values.tags or '' }}" list="prep-tags" placeholder="behavioral, leadership" autocomplete="off">
+    <small>Separate tags with commas.{% if all_tags %} In use (click to add): <span data-tag-picker="#question-tags">{% for t in all_tags %}<button type="button" class="tag-pill" data-tag="{{ t.name }}">{{ t.name }}</button> {% endfor %}</span>{% endif %}</small>
   </label>
   <datalist id="prep-tags">{% for t in all_tags %}<option value="{{ t.name }}">{% endfor %}</datalist>
   <label>Notes
@@ -26,3 +26,4 @@
 </form>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="/static/tag-picker.js" defer></script>{% endblock %}

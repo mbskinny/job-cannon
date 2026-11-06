@@ -377,6 +377,15 @@ def test_prep_answer_read_aloud_controls(client, monkeypatch):
     assert resp.status_code == 201 and "data-speak" not in resp.text
 
 
+def test_prep_question_form_tag_pills(client):
+    assert "data-tag-picker" not in client.get("/prep/new").text  # no tags yet
+    client.post("/prep", data={"prompt": "Lead a team?", "tags": "Leadership"})
+    page = client.get("/prep/new").text
+    assert 'data-tag-picker="#question-tags"' in page and 'data-tag="leadership"' in page
+    assert '<script src="/static/tag-picker.js"' in page
+    assert client.get("/static/tag-picker.js").status_code == 200
+
+
 def test_prep_recorded_answer_transcribed(client, cfg, monkeypatch):
     from job_cannon import transcribe
 
