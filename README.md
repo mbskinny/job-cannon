@@ -68,6 +68,22 @@ sent. One-time setup on the computer that runs Job Cannon:
 Keep Chrome open while a search runs; one usually takes 5–15 minutes, and only
 one runs at a time. `JOB_CANNON_SEARCH_TIMEOUT` (seconds, default 1800) caps it.
 
+### Claude's access to your data (MCP server)
+
+`job-cannon mcp` is an [MCP](https://modelcontextprotocol.io) server that gives
+Claude tools to read your applications and interview prep bank, and to add
+prep questions and answers (marked as AI drafts when Claude wrote them). It
+never edits or deletes anything. It works on the active profile, or the one set
+with `--profile` or `JOB_CANNON_PROFILE`, and can run while the app is open.
+
+Claude Code started in this repo finds it through `.mcp.json` and asks once
+before using it. To use it from anywhere (or from Claude Desktop), register it
+once, with the path to your checkout:
+
+```sh
+claude mcp add --scope user job-cannon -- uv run --quiet --directory ~/projects/job-cannon --extra mcp job-cannon mcp
+```
+
 ## Your data folder
 
 Default location is `~/JobCannon` (override with `--data-dir` or the

@@ -20,7 +20,7 @@ If an id was given:
 uv run python .claude/skills/answer-application-question/scripts/app_context.py <APP_ID>
 ```
 
-This is **read-only**. It prints JSON with the application (company, role, posting URL, location, salary, notes), the company, linked contacts, the interaction log (recruiter calls, interview notes), the cover letter draft, attachments with their paths on disk, and status history.
+This is **read-only**. It prints JSON with the application (company, role, posting URL, location, salary, notes), the company, linked contacts, the interaction log (recruiter calls, interview notes), the cover letter draft, attachments with their paths on disk, status history, and the interview prep answers linked to it.
 
 If no id was given but the question or conversation names a company, find it with `uv run python .claude/skills/find-jobs/scripts/add_applications.py --list` and confirm the match with the user in one line before using it. If nothing matches, answer without application context; don't add the application unless the user asks.
 

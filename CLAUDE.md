@@ -11,12 +11,14 @@ Uses [uv](https://docs.astral.sh/uv/) (Python >= 3.12).
 ```sh
 uv sync                                   # install deps (incl. dev group: pytest, httpx)
 uv sync --extra voice                     # also faster-whisper, for transcribing recorded prep answers
+uv sync --extra mcp                       # also the MCP SDK, for `job-cannon mcp` and tests/test_mcp.py
 uv run job-cannon                         # serve at http://127.0.0.1:8765/ and open a browser
 uv run job-cannon serve --no-browser --port 9000 --data-dir /tmp/jc   # dev run against throwaway data
 uv run job-cannon backup --out DIR        # zip of the active profile's DB snapshot, files/, job-search.md and résumé (--profile X, or --all)
 uv run job-cannon profiles [--json]       # list profiles / active profile as JSON; `profiles use NAME` switches
 uv run job-cannon profiles sector NAME teaching   # set a profile's job sector ('' for general)
 uv run job-cannon resume-text             # the active profile's résumé as text (.docx/.odt/.txt/.md)
+uv run job-cannon mcp                     # MCP server over stdio (Claude Code here starts it from .mcp.json)
 uv run pytest                             # all tests
 uv run pytest tests/test_web.py::test_name   # single test
 ```
@@ -30,6 +32,8 @@ Data folder resolution: `--data-dir` flag → `JOB_CANNON_DATA` env var → `~/J
 Layers, top to bottom:
 
 - `cli.py`: argparse entry point (`serve` is the default subcommand, plus `backup` and `profiles`). `--data-dir` and `--profile` are accepted before or after the subcommand.
+- `mcp_server.py`: the MCP server (`job-cannon mcp`, optional `mcp` extra; tests skip without it). Tools read applications and the prep bank and add prep questions and answers, never update or delete. The profile is resolved and a connection opened **on every call** (so it follows profile switches and can run beside the app), and every result names the profile. Tools raise `ToolError` for bad input. It's mcp 2.x: `MCPServer` from `mcp.server.mcpserver` (FastMCP was renamed).
+- `agent_data.py`: JSON-ready views (application context, prep questions with answers) shared by the MCP server and the skill scripts, so they return the same shapes.
 - `profiles.py`: the registry (`load`, `create`, `rename`, `set_active`, `check_delete`/`delete`, `resolve_profile`). It has no web code; the skill scripts use it too.
 - `web/app.py`: `create_app(root, profile=None)` factory. It keeps **one SQLite connection per opened profile** in `app.state.conns` (opened lazily by `open_profile`, which migrates and runs `prep.fail_pending`), and the active profile id in `app.state.active`. Route modules import shared helpers from here: `conn(request)` and `config(request)` (the **active** profile's connection and data folder; always go through these), `render(...)` (injects `today`, `profile`, `profiles`), `redirect(...)` (303), `safe_next(...)`.
 - `web/routes/*.py`: one `APIRouter` per area. Each must be added to the `include_router` loop at the bottom of `create_app`.

@@ -19,10 +19,8 @@ import json
 import subprocess
 import sys
 
-from job_cannon import db, profiles
+from job_cannon import agent_data, db, profiles
 from job_cannon.repo import applications, prep
-
-ANSWER_FIELDS = ["id", "mode", "body", "best", "ai_draft", "application_id", "company_name", "application_role", "created_at"]
 
 
 def main() -> int:
@@ -55,20 +53,7 @@ def main() -> int:
     if args.command == "list":
         out = {
             "profile": profile.name,
-            "questions": [
-                {
-                    "id": q["id"],
-                    "prompt": q["prompt"],
-                    "notes": q["notes"],
-                    "tags": q["tags"].split(",") if q["tags"] else [],
-                    "answers": [
-                        {k: a[k] for k in ANSWER_FIELDS}
-                        for a in prep.answers_for_question(conn, q["id"])
-                        if a["body"]
-                    ],
-                }
-                for q in prep.list_questions(conn)
-            ],
+            "questions": [agent_data.question_with_answers(conn, q) for q in prep.list_questions(conn)],
         }
         print(json.dumps(out, indent=2, ensure_ascii=False))
         return 0
