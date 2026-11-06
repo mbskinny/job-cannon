@@ -358,6 +358,25 @@ def test_prep_answer_marked_ai_draft(client):
     assert re.search(r'id="new-answer-ai-draft"\s*>', client.post(f"/prep/{q_id}/answers", data={"body": " "}).text)
 
 
+def test_prep_answer_read_aloud_controls(client, monkeypatch):
+    from job_cannon import transcribe
+
+    q_id = client.post("/prep", data={"prompt": "Why us?"}, follow_redirects=False).headers["location"].rsplit("/", 1)[1]
+    page = client.get(f"/prep/{q_id}").text
+    assert '<script src="/static/prep-reader.js"' in page and "data-read-settings" in page
+    assert "data-speak" not in page  # no answers yet
+    assert "SpeechSynthesisUtterance" in client.get("/static/prep-reader.js").text
+
+    client.post(f"/prep/{q_id}/answers", data={"body": "Because. Of the mission."})
+    page = client.get(f"/prep/{q_id}").text
+    assert "data-read-aloud hidden" in page and "data-speak" in page and "data-repeat" in page
+
+    # A recording with no transcript (yet) has nothing to read.
+    monkeypatch.setattr(transcribe, "available", lambda: False)
+    resp = client.post(f"/prep/{q_id}/answers/record", files={"audio": ("a.ogg", b"OggS", "audio/ogg")})
+    assert resp.status_code == 201 and "data-speak" not in resp.text
+
+
 def test_prep_recorded_answer_transcribed(client, cfg, monkeypatch):
     from job_cannon import transcribe
 

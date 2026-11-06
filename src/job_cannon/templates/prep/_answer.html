@@ -30,7 +30,15 @@
   {% elif a.mode == 'voice' and a.transcript_status == 'done' and not a.body %}
   <p class="muted"><small>No speech was detected in this recording.</small></p>
   {% endif %}
-  {% if a.body %}<p class="answer-body">{{ a.body }}</p>{% endif %}
+  {% if a.body %}
+  {% if not pending %}{# Shown by static/prep-reader.js when the browser can speak. #}
+  <div class="read-aloud" data-read-aloud hidden>
+    <button type="button" class="link" data-speak aria-pressed="false">▶ Read to me</button>
+    <label><input type="checkbox" data-repeat> Repeat</label>
+    <small class="muted" data-pass aria-live="polite"></small>
+  </div>{% endif %}
+  <p class="answer-body">{{ a.body }}</p>
+  {% endif %}
   {% if not pending %}
   <details>
     <summary><small>Edit{% if a.mode == 'voice' %} transcript{% endif %}</small></summary>

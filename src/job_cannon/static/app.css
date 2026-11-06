@@ -355,6 +355,13 @@ h1.prep-prompt { font-size: 1.8rem; }
 .answers li.best { border-left: 3px solid var(--jc-brass); padding-left: 0.6rem; }
 .answers audio { display: block; width: 100%; height: 2.25rem; margin: 0.4rem 0; }
 .answer-body { white-space: pre-wrap; }
+.read-aloud { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0.4rem 0 0; font-size: 0.9rem; }
+.read-aloud label { margin: 0; }
+.read-aloud input[type=checkbox] { margin: 0 0.3rem 0 0; }
+.answers li.reading .answer-body { background: var(--jc-sunken); box-shadow: -0.5rem 0 0 var(--jc-sunken), 0.5rem 0 0 var(--jc-sunken); border-radius: 2px; }
+.read-settings { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: var(--pico-spacing); font-size: 0.9rem; }
+.read-settings label { flex: 1 1 10rem; margin: 0; }
+.read-settings select { margin: 0.2rem 0 0; padding-top: 0.3rem; padding-bottom: 0.3rem; }
 button.link.star { font-size: 1.1rem; line-height: 1; color: var(--jc-brass-text); }
 
 /* Easter egg: the cannon duel (static/cannon-game.js), opened by double-clicking the logo. */
