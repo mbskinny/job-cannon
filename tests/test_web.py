@@ -17,7 +17,7 @@ def _create_app(client, **fields):
 
 def test_pages_render_empty(client):
     for path in ["/", "/board", "/applications", "/applications/new", "/contacts", "/contacts/new",
-                 "/cover-letters", "/cover-letters/new", "/prep", "/prep/new"]:
+                 "/cover-letters", "/cover-letters/new", "/prep", "/prep/new", "/prep/concepts", "/prep/concepts/new"]:
         assert client.get(path).status_code == 200, path
 
 
@@ -375,6 +375,50 @@ def test_prep_answer_read_aloud_controls(client, monkeypatch):
     monkeypatch.setattr(transcribe, "available", lambda: False)
     resp = client.post(f"/prep/{q_id}/answers/record", files={"audio": ("a.ogg", b"OggS", "audio/ogg")})
     assert resp.status_code == 201 and "data-speak" not in resp.text
+
+
+def _concepts_panel(page):
+    return page.split('id="concepts"')[1].split("</article>")[0]
+
+
+def test_prep_concepts_pages_and_links(client):
+    q_id = client.post("/prep", data={"prompt": "Tell me about your data work."}, follow_redirects=False).headers["location"].rsplit("/", 1)[1]
+    assert "+ New concept for this question" in client.get(f"/prep/{q_id}").text
+
+    # Made from a question's page: linked to it, and back to that question.
+    resp = client.post("/prep/concepts", data={"name": "Benchling Analysis", "explanation": "A tool. For assays.", "question": q_id}, follow_redirects=False)
+    assert resp.headers["location"] == f"/prep/{q_id}#concepts"
+    panel = _concepts_panel(client.get(f"/prep/{q_id}").text)
+    assert "Benchling Analysis</strong>" in panel and "A tool. For assays." in panel
+    assert client.post("/prep/concepts", data={"name": "benchling analysis"}).status_code == 422
+    assert client.post("/prep/concepts", data={"name": " "}).status_code == 422
+
+    listing = client.get("/prep/concepts?q=assays", headers={"HX-Request": "true"}).text
+    assert "Benchling Analysis" in listing and "<html" not in listing
+    k_id = re.search(r'href="/prep/concepts/(\d+)"', listing).group(1)
+    assert client.get("/prep/concepts/random", follow_redirects=False).headers["location"] == f"/prep/concepts/{k_id}?test=1"
+
+    page = client.get(f"/prep/concepts/{k_id}?test=1").text
+    assert re.search(r"data-hide\s+checked", page) and "data-read-aloud" in page and "4 words" in page
+    assert f'href="/prep/{q_id}"' in page
+    assert not re.search(r"data-hide\s+checked", client.get(f"/prep/concepts/{k_id}").text)
+
+    client.post(f"/prep/concepts/{k_id}/unlink", data={"question_id": q_id})
+    assert "Benchling Analysis</strong>" not in _concepts_panel(client.get(f"/prep/{q_id}").text)
+    resp = client.post(f"/prep/{q_id}/concepts", data={"concept_id": k_id}, follow_redirects=False)
+    assert resp.headers["location"] == f"/prep/{q_id}#concepts"
+    assert "Benchling Analysis</strong>" in _concepts_panel(client.get(f"/prep/{q_id}").text)
+    assert client.post(f"/prep/{q_id}/concepts", data={"concept_id": "999"}).status_code == 400
+    client.post(f"/prep/concepts/{k_id}/unlink", data={"question_id": q_id})
+    client.post(f"/prep/concepts/{k_id}/link", data={"question_id": q_id})
+    assert f'href="/prep/{q_id}"' in client.get(f"/prep/concepts/{k_id}").text
+    assert client.post(f"/prep/concepts/{k_id}/link", data={"question_id": "x"}).status_code == 400
+
+    client.post(f"/prep/concepts/{k_id}", data={"name": "Benchling", "explanation": "Shorter.", "notes": "More."})
+    assert "More." in client.get(f"/prep/concepts/{k_id}").text
+    client.post(f"/prep/concepts/{k_id}/delete")
+    assert client.get(f"/prep/concepts/{k_id}").status_code == 404
+    assert client.get(f"/prep/{q_id}").status_code == 200
 
 
 def test_prep_question_form_tag_pills(client):

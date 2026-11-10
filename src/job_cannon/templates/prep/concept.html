@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ concept.name }} · Concepts{% endblock %}
+{% block content %}
+{% set here = '/prep/concepts/%d' % concept.id %}
+{% set words = concept.explanation.split()|length %}
+{# Estimated speaking time at a normal pace of 150 words per minute, as for answers. #}
+{% set spoken = (words * 60 / 150)|round|int %}
+<p><a href="/prep/concepts">← All concepts</a></p>
+<div class="page-head">
+  <hgroup>
+    <h1 class="prep-prompt">{{ concept.name }}</h1>
+    <p>Concept · linked to {{ questions|length }} question{{ '' if questions|length == 1 else 's' }}</p>
+  </hgroup>
+  <div class="head-actions">
+    <a href="/prep/concepts/random" role="button" class="secondary outline" title="A random concept with its explanation hidden">Test me on another</a>
+    <a href="{{ here }}/edit" role="button" class="secondary outline">Edit</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <article id="explanation" class="concept-explain">
+      <header><h2>Explanation</h2></header>
+      {% if concept.explanation %}
+      <label class="concept-hide"><input type="checkbox" data-hide {% if test %}checked{% endif %}>
+        Hide it: say it out loud first, then untick to check</label>
+      <div class="read-settings" data-read-settings hidden>
+        <label>Voice <select data-voice aria-label="Reading voice"><option value="">Browser default</option></select></label>
+        <label>Speed <select data-rate aria-label="Reading speed">
+          {% for r in ['0.8', '0.9', '1', '1.1', '1.25'] %}<option value="{{ r }}" {% if r == '1' %}selected{% endif %}>{{ r }}×</option>{% endfor %}
+        </select></label>
+      </div>
+      <div>
+        {# Shown by static/prep-reader.js when the browser can speak; it reads the sibling .answer-body. #}
+        <div class="read-aloud" data-read-aloud hidden>
+          <button type="button" class="link" data-speak aria-pressed="false">▶ Read to me</button>
+          <label><input type="checkbox" data-repeat> Repeat</label>
+          <small class="muted" data-pass aria-live="polite"></small>
+        </div>
+        <p class="answer-body concept-body">{{ concept.explanation }}</p>
+      </div>
+      <small class="muted">{{ words }} words · <span title="Estimated at 150 words per minute">~{{ spoken // 60 }}:{{ '%02d'|format(spoken % 60) }} to say</span>{% if words > 120 %} · a shorter version is easier to say from memory{% endif %}</small>
+      {% else %}
+      <p class="muted">No explanation yet. <a href="{{ here }}/edit">Write the short version</a> you want to say from memory.</p>
+      {% endif %}
+    </article>
+
+    <article>
+      <header><h2>Notes</h2></header>
+      {% if concept.notes %}<div class="notes prep-notes">{{ concept.notes }}</div>
+      {% else %}<p class="muted">No notes. <a href="{{ here }}/edit">Add details</a> to draw on if they ask more.</p>{% endif %}
+    </article>
+  </div>
+
+  <div>
+    <article id="questions">
+      <header><h2>Questions</h2></header>
+      {% if questions %}
+      <ul class="concept-links">
+        {% for q in questions %}
+        <li><a href="/prep/{{ q.id }}">{{ q.prompt }}</a>
+          <form method="post" action="{{ here }}/unlink" class="inline">
+            <input type="hidden" name="question_id" value="{{ q.id }}">
+            <button class="link muted" title="Unlink this question">Unlink</button>
+          </form></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">Not linked to any questions yet.</p>{% endif %}
+      {% if other_questions %}
+      <form method="post" action="{{ here }}/link" class="start-draft">
+        <select name="question_id" aria-label="Question to link" required>
+          <option value="">Link a question…</option>
+          {% for q in other_questions %}<option value="{{ q.id }}">{{ q.prompt|truncate(80) }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="secondary">Link</button>
+      </form>
+      {% endif %}
+    </article>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/prep-reader.js" defer></script>{% endblock %}

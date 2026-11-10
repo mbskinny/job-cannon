@@ -366,6 +366,19 @@ button.tag-pill { all: unset; cursor: pointer; padding: 0 0.2rem; border-radius:
 button.tag-pill:hover { background: var(--jc-sunken); color: var(--jc-ink); text-decoration: none; }
 button.tag-pill:focus-visible { outline: 2px solid var(--pico-primary-focus); outline-offset: 1px; }
 button.tag-pill[aria-pressed=true] { color: var(--jc-muted); text-decoration: none; opacity: 0.6; }
+.prep-tabs { display: flex; gap: 1.5rem; margin: 0 0 var(--pico-spacing); border-bottom: 1px solid var(--jc-rule); }
+.prep-tabs a { padding: 0.3rem 0; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--jc-ink-soft); font-weight: 600; text-decoration: none; }
+.prep-tabs a:hover { color: var(--jc-ink); }
+.prep-tabs a[aria-current=page] { color: var(--jc-ink); border-bottom-color: var(--jc-brass); }
+.concept-hide { font-size: 0.9rem; }
+.concept-body { font-size: 1.1rem; line-height: 1.6; transition: filter 0.2s; }
+/* "Hide it" blurs the explanation so it can be said from memory first; reading aloud still works. */
+.concept-explain:has([data-hide]:checked) .concept-body { filter: blur(0.45em); user-select: none; }
+@media (prefers-reduced-motion: reduce) { .concept-body { transition: none; } }
+.concept-links { padding-left: 0; }
+.concept-links li { list-style: none; margin-bottom: 0.5rem; }
+.concept-links details { margin-bottom: 0; }
+.concept-links .answer-body { margin: 0.3rem 0; }
 button.link.star { font-size: 1.1rem; line-height: 1; color: var(--jc-brass-text); }
 
 /* Easter egg: the cannon duel (static/cannon-game.js), opened by double-clicking the logo. */

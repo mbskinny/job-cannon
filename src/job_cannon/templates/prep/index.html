@@ -8,6 +8,7 @@
   </hgroup>
   <a href="/prep/new" role="button">+ New question</a>
 </div>
+{% with tab = 'questions' %}{% include "prep/_tabs.html" %}{% endwith %}
 {% if total %}
 <form class="filters prep-filters" action="/prep" hx-get="/prep" hx-target="#questions" hx-trigger="input delay:250ms, change" hx-push-url="true">
   <input type="search" name="q" value="{{ q }}" placeholder="Search questions and notes…" aria-label="Search">

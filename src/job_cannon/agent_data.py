@@ -69,12 +69,29 @@ def question_summary(row: sqlite3.Row) -> dict:
 
 
 def question_with_answers(conn, row: sqlite3.Row) -> dict:
-    """A prep question with its notes and every answer that has text (newest first).
+    """A prep question with its notes, linked concepts and every answer that has text (newest first).
 
     Answers still without text (a recording waiting for its transcript) are left out.
     """
     return {
         **question_summary(row),
         "notes": row["notes"],
+        "concepts": [
+            {"id": c["id"], "name": c["name"], "explanation": c["explanation"]}
+            for c in prep.concepts_for_question(conn, row["id"])
+        ],
         "answers": [answer_dict(a) for a in prep.answers_for_question(conn, row["id"]) if a["body"]],
+    }
+
+
+def concept_summary(row: sqlite3.Row) -> dict:
+    return {"id": row["id"], "name": row["name"], "explanation": row["explanation"]}
+
+
+def concept_with_questions(conn, row: sqlite3.Row) -> dict:
+    """A prep concept with its notes and the questions it's linked to."""
+    return {
+        **concept_summary(row),
+        "notes": row["notes"],
+        "questions": [question_summary(q) for q in prep.questions_for_concept(conn, row["id"])],
     }

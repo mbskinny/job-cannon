@@ -5,7 +5,7 @@ The profile is resolved on every call, the same way as the CLI (``--profile``,
 then ``JOB_CANNON_PROFILE``, then the active one), so switching profiles in the
 app is picked up without a restart, and every result names the profile it came
 from. Each call opens its own connection and closes it, so the server can run
-next to the app. Writes only add rows (a question or an answer) through the
+next to the app. Writes only add rows (a question, an answer, a concept) through the
 ``repo`` functions; nothing here updates or deletes.
 """
 
@@ -24,7 +24,9 @@ from job_cannon.repo import applications, prep
 
 INSTRUCTIONS = """\
 Job Cannon is the user's local job-search tracker: applications, and an
-interview prep bank of questions with practice answers. Every result names the
+interview prep bank of questions with practice answers, plus concepts: short
+explanations of a tool, method or idea that the user rehearses so they can
+explain it quickly in any answer. Every result names the
 profile (several people can share one install); mention it if it isn't the
 person you're helping. Prep answers with ai_draft=1 were written by an AI, not
 the user: use them for content, but take the user's voice from their own
@@ -139,6 +141,49 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
             return {
                 "profile": name, "question_id": question_id, "existing": existing,
                 "url": f"http://127.0.0.1:8765/prep/{question_id}",
+            }
+
+    @server.tool(annotations=READ)
+    def list_prep_concepts(search: str | None = None) -> dict[str, Any]:
+        """List interview prep concepts (short explanations of tools, methods or ideas the user rehearses),
+        with their explanations. search: matches the name, explanation and notes."""
+        with opened() as (name, _cfg, conn):
+            rows = prep.list_concepts(conn, q=search or None)
+            return {"profile": name, "concepts": [agent_data.concept_summary(r) for r in rows]}
+
+    @server.tool(annotations=READ)
+    def get_prep_concept(concept_id: int) -> dict[str, Any]:
+        """One interview prep concept with its explanation, notes and the questions it's linked to."""
+        with opened() as (name, _cfg, conn):
+            row = prep.get_concept(conn, concept_id)
+            if row is None:
+                raise ToolError(f"No prep concept with id {concept_id}.")
+            return {"profile": name, **agent_data.concept_with_questions(conn, row)}
+
+    @server.tool(annotations=ADD)
+    def create_prep_concept(
+        name: str, explanation: str, notes: str = "", question_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Add a concept to interview prep: something the user needs to explain quickly (a tool, a method,
+        a piece of their field), e.g. name "Benchling Analysis". explanation: the short version to rehearse
+        and say from memory, about 30 seconds (~75 words) of plain spoken sentences. notes: optional details
+        to draw on if asked more. question_ids: prep questions where it comes up. If a concept with the same
+        name exists, returns it unchanged (existing=true). Ask the user first."""
+        with opened() as (profile_name, _cfg, conn):
+            for question_id in question_ids or []:
+                question_or_error(conn, question_id)
+            same = prep.find_concept(conn, name)
+            if same:
+                concept_id, existing = same["id"], True
+            else:
+                try:
+                    concept_id = prep.create_concept(conn, name, explanation, notes, question_ids=question_ids or [])
+                except ValueError as exc:
+                    raise ToolError(str(exc)) from exc
+                existing = False
+            return {
+                "profile": profile_name, "concept_id": concept_id, "existing": existing,
+                "url": f"http://127.0.0.1:8765/prep/concepts/{concept_id}",
             }
 
     return server
