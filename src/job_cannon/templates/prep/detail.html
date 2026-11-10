@@ -45,12 +45,7 @@
 
     <article id="answers">
       <header><h2>Answers <small class="muted">{{ answers|length }}</small></h2></header>
-      <div class="read-settings" data-read-settings hidden>
-        <label>Voice <select data-voice aria-label="Reading voice"><option value="">Browser default</option></select></label>
-        <label>Speed <select data-rate aria-label="Reading speed">
-          {% for r in ['0.8', '0.9', '1', '1.1', '1.25'] %}<option value="{{ r }}" {% if r == '1' %}selected{% endif %}>{{ r }}×</option>{% endfor %}
-        </select></label>
-      </div>
+      {% include "prep/_read_settings.html" %}
       <ul class="timeline answers" id="answer-list">
         {% for a in answers %}{% include "prep/_answer.html" %}{% endfor %}
       </ul>

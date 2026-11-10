@@ -24,12 +24,7 @@
       {% if concept.explanation %}
       <label class="concept-hide"><input type="checkbox" data-hide {% if test %}checked{% endif %}>
         Hide it: say it out loud first, then untick to check</label>
-      <div class="read-settings" data-read-settings hidden>
-        <label>Voice <select data-voice aria-label="Reading voice"><option value="">Browser default</option></select></label>
-        <label>Speed <select data-rate aria-label="Reading speed">
-          {% for r in ['0.8', '0.9', '1', '1.1', '1.25'] %}<option value="{{ r }}" {% if r == '1' %}selected{% endif %}>{{ r }}×</option>{% endfor %}
-        </select></label>
-      </div>
+      {% include "prep/_read_settings.html" %}
       <div>
         {# Shown by static/prep-reader.js when the browser can speak; it reads the sibling .answer-body. #}
         <div class="read-aloud" data-read-aloud hidden>
