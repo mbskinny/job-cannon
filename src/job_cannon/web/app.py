@@ -23,6 +23,19 @@ PKG_DIR = Path(__file__).resolve().parent.parent
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "testserver"]
 PROFILE_HEADER = "X-Job-Cannon-Profile"
 
+class RevalidatedStaticFiles(StaticFiles):
+    """Static files the browser must revalidate on each use (a cheap 304 on localhost).
+
+    Without a Cache-Control header, browsers cache scripts heuristically, often for
+    hours, so after an update a page could run with the previous version's JS.
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 templates = Jinja2Templates(directory=PKG_DIR / "templates")
 templates.env.globals.update(
     STATUSES=applications.STATUSES,
@@ -166,7 +179,7 @@ def create_app(root: Path, profile: str | None = None) -> FastAPI:
                 )
         return await call_next(request)
 
-    app.mount("/static", StaticFiles(directory=PKG_DIR / "static"), name="static")
+    app.mount("/static", RevalidatedStaticFiles(directory=PKG_DIR / "static"), name="static")
 
     from job_cannon.web.routes import applications as r_apps
     from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files, find_jobs
