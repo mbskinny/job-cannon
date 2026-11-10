@@ -365,7 +365,12 @@ def test_prep_answer_read_aloud_controls(client, monkeypatch):
     page = client.get(f"/prep/{q_id}").text
     assert '<script src="/static/prep-reader.js"' in page and "data-read-settings" in page
     assert "data-speak" not in page  # no answers yet
-    assert "SpeechSynthesisUtterance" in client.get("/static/prep-reader.js").text
+    script = client.get("/static/prep-reader.js").text
+    assert "SpeechSynthesisUtterance" in script and "I'll wait for you to rehearse now." in script
+    # "Your turn" pauses: off by default, on both pages that read aloud.
+    assert re.search(r'data-rehearse[^>]*>\s*<option value="0">Off', page)
+    k_id = client.post("/prep/concepts", data={"name": "ELN", "explanation": "A lab notebook."}, follow_redirects=False).headers["location"].rsplit("/", 1)[1]
+    assert "data-rehearse" in client.get(f"/prep/concepts/{k_id}").text
 
     client.post(f"/prep/{q_id}/answers", data={"body": "Because. Of the mission."})
     page = client.get(f"/prep/{q_id}").text

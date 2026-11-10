@@ -1,0 +1,13 @@
+{# Settings for "Read to me" (static/prep-reader.js), shown when the browser can speak; remembered in localStorage. #}
+<div class="read-settings" data-read-settings hidden>
+  <label>Voice <select data-voice aria-label="Reading voice"><option value="">Browser default</option></select></label>
+  <label>Speed <select data-rate aria-label="Reading speed">
+    {% for r in ['0.8', '0.9', '1', '1.1', '1.25'] %}<option value="{{ r }}" {% if r == '1' %}selected{% endif %}>{{ r }}×</option>{% endfor %}
+  </select></label>
+  <label title="While repeating: every so often, pause for as long as the text takes to say, so you can say it yourself">Your turn
+    <select data-rehearse aria-label="Pause to rehearse">
+      <option value="0">Off</option>
+      <option value="1">After every read</option>
+      {% for n in [2, 3, 5] %}<option value="{{ n }}">Every {{ n }} reads</option>{% endfor %}
+    </select></label>
+</div>
