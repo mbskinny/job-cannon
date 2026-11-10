@@ -364,6 +364,39 @@ def test_prep_answers_and_cleanup(conn):
     assert prep.list_tags(conn) == []
 
 
+def test_prep_concepts_linked_to_questions(conn):
+    from job_cannon.repo import prep
+
+    q1 = prep.create_question(conn, "Tell me about your data work.")
+    q2 = prep.create_question(conn, "Which tools do you know?")
+    k = prep.create_concept(conn, "  Benchling   Analysis ", "It analyses\r\nassay data.", question_ids=[q1, 999])
+    concept = prep.get_concept(conn, k)
+    assert (concept["name"], concept["explanation"], concept["question_count"]) == ("Benchling Analysis", "It analyses\nassay data.", 1)
+    assert prep.find_concept(conn, "benchling analysis")["id"] == k
+    with pytest.raises(ValueError, match="already"):
+        prep.create_concept(conn, "BENCHLING ANALYSIS")
+    with pytest.raises(ValueError):
+        prep.create_concept(conn, " ")
+    other = prep.create_concept(conn, "ELN")
+    with pytest.raises(ValueError, match="already"):
+        prep.update_concept(conn, other, "benchling analysis")
+
+    prep.link_concept(conn, q2, k)
+    prep.link_concept(conn, q2, k)  # linking twice is harmless
+    assert [q["id"] for q in prep.questions_for_concept(conn, k)] == [q1, q2]
+    assert [c["name"] for c in prep.concepts_for_question(conn, q2)] == ["Benchling Analysis"]
+    assert [c["id"] for c in prep.list_concepts(conn, q="assay")] == [k]
+    assert prep.random_concept_id(conn, q="assay") == k
+
+    prep.unlink_concept(conn, q2, k)
+    assert prep.concepts_for_question(conn, q2) == []
+    prep.delete_question(conn, q1)
+    assert prep.get_concept(conn, k)["question_count"] == 0  # concept kept
+    prep.link_concept(conn, q2, k)
+    prep.delete_concept(conn, k)
+    assert prep.get_question(conn, q2) is not None and prep.concepts_for_question(conn, q2) == []
+
+
 def test_starter_questions_by_sector(conn):
     from job_cannon.repo import prep
 

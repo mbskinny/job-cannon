@@ -29,7 +29,7 @@ def test_tools_listed_with_read_only_hints(call):
     tools = {t.name: t for t in asyncio.run(call.server.list_tools())}
     assert set(tools) == {
         "list_applications", "get_application", "list_prep_questions", "get_prep_question",
-        "save_prep_answer", "create_prep_question",
+        "save_prep_answer", "create_prep_question", "list_prep_concepts", "get_prep_concept", "create_prep_concept",
     }
     assert tools["get_prep_question"].annotations.read_only_hint is True
     assert tools["save_prep_answer"].annotations.read_only_hint is False
@@ -95,6 +95,32 @@ def test_create_prep_question_reuses_same_wording(call, conn):
     assert prep.get_question(conn, first["question_id"])["tags"] == "motivation"
     again = call("create_prep_question", prompt="why do you want to work here?")
     assert again == {**first, "existing": True}
+
+
+def test_prep_concepts(call, conn):
+    def create(**arguments):  # call() can't take name=, its own first parameter
+        result = asyncio.run(call.server.call_tool("create_prep_concept", arguments))
+        assert not result.is_error, result.content
+        return result.structured_content
+
+    q = prep.create_question(conn, "Tell me about your data work.")
+    made = create(name="Benchling  Analysis", explanation="A tool for analysing data.", question_ids=[q])
+    assert made["existing"] is False and made["url"].endswith(f"/prep/concepts/{made['concept_id']}")
+    again = create(name="benchling analysis", explanation="Something else.")
+    assert again == {**made, "existing": True}
+    assert prep.get_concept(conn, made["concept_id"])["explanation"] == "A tool for analysing data."
+
+    assert call("list_prep_concepts", search="analysing")["concepts"] == [
+        {"id": made["concept_id"], "name": "Benchling Analysis", "explanation": "A tool for analysing data."}
+    ]
+    concept = call("get_prep_concept", concept_id=made["concept_id"])
+    assert concept["questions"] == [{"id": q, "prompt": "Tell me about your data work.", "tags": []}]
+    assert call("get_prep_question", question_id=q)["concepts"][0]["name"] == "Benchling Analysis"
+
+    with pytest.raises(ToolError, match="No prep question"):
+        asyncio.run(call.server.call_tool("create_prep_concept", {"name": "X", "explanation": "", "question_ids": [999]}))
+    with pytest.raises(ToolError, match="No prep concept"):
+        asyncio.run(call.server.call_tool("get_prep_concept", {"concept_id": 999}))
 
 
 def test_profile_resolved_on_each_call(call, cfg):

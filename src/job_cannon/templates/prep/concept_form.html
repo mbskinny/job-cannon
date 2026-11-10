@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if concept else 'New' }} concept{% endblock %}
+{% block content %}
+{% set back = '/prep/concepts/%d' % concept.id if concept else ('/prep/%s#concepts' % values.question if values.question else '/prep/concepts') %}
+<h1>{{ 'Edit concept' if concept else 'New concept' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/prep/concepts/%d' % concept.id if concept else '/prep/concepts' }}">
+  {% if values.question %}<input type="hidden" name="question" value="{{ values.question }}">{% endif %}
+  <label>Name *
+    <input name="name" value="{{ values.name or '' }}" required {% if not concept %}autofocus{% endif %} placeholder="e.g. Benchling Analysis">
+  </label>
+  <label>Explanation
+    <textarea name="explanation" rows="6" placeholder="What it is, what it's for, and how you used it, in a few sentences you could say out loud.">{{ values.explanation or '' }}</textarea>
+    <small>The short version you want to say from memory. About 30 seconds (75 words) is plenty.</small>
+  </label>
+  <label>Notes
+    <textarea name="notes" rows="8" placeholder="Details to draw on if they ask more: key features, examples from your work, comparisons, numbers.">{{ values.notes or '' }}</textarea>
+  </label>
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="{{ back }}" role="button" class="secondary outline">Back</a>
+  </div>
+</form>
+{% if concept %}
+<form method="post" action="/prep/concepts/{{ concept.id }}/delete" onsubmit="return confirm('Delete this concept? The questions it is linked to are kept.')">
+  <button class="outline danger-btn">Delete concept</button>
+</form>
+{% endif %}
+{% endblock %}

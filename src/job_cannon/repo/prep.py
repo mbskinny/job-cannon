@@ -1,4 +1,7 @@
-"""Interview prep: a tagged question bank and practice answers.
+"""Interview prep: a tagged question bank, practice answers, and concepts.
+
+Concepts are short explanations to rehearse (what a tool is, how a method
+works) that can be linked to any number of questions.
 
 Answers are typed, or recorded in the browser. Recordings are stored under
 ``files/`` and transcribed locally (see ``job_cannon.transcribe``).
@@ -281,6 +284,119 @@ def delete_answer(conn, answer_id: int) -> str | None:
     with conn:
         conn.execute("DELETE FROM prep_answers WHERE id = ?", (answer_id,))
     return row[0] if row else None
+
+
+# --- concepts ---
+
+_CONCEPT_SELECT = """
+    SELECT c.*, (SELECT count(*) FROM prep_question_concepts qc WHERE qc.concept_id = c.id) AS question_count
+    FROM prep_concepts c
+"""
+
+
+def _concept_filter(q: str | None) -> tuple[str, list]:
+    if not q:
+        return "", []
+    return " WHERE (c.name LIKE ? OR c.explanation LIKE ? OR c.notes LIKE ?)", [f"%{q}%"] * 3
+
+
+def list_concepts(conn, q: str | None = None) -> list[sqlite3.Row]:
+    where, params = _concept_filter(q)
+    return conn.execute(_CONCEPT_SELECT + where + " ORDER BY c.name COLLATE NOCASE", params).fetchall()
+
+
+def random_concept_id(conn, q: str | None = None) -> int | None:
+    where, params = _concept_filter(q)
+    ids = [r[0] for r in conn.execute("SELECT c.id FROM prep_concepts c" + where, params)]
+    return random.choice(ids) if ids else None
+
+
+def get_concept(conn, concept_id: int) -> sqlite3.Row | None:
+    return conn.execute(_CONCEPT_SELECT + " WHERE c.id = ?", (concept_id,)).fetchone()
+
+
+def find_concept(conn, name: str) -> sqlite3.Row | None:
+    """The concept with this name, ignoring case and extra spaces."""
+    return conn.execute(_CONCEPT_SELECT + " WHERE c.name = ?", (" ".join((name or "").split()),)).fetchone()
+
+
+def _tidy(text: str | None) -> str:
+    return (text or "").replace("\r\n", "\n").strip()
+
+
+def _clean_concept(name: str, explanation: str, notes: str) -> tuple[str, str, str]:
+    name = " ".join((name or "").split())
+    if not name:
+        raise ValueError("a name is required")
+    return name, _tidy(explanation), _tidy(notes)
+
+
+def create_concept(conn, name: str, explanation: str = "", notes: str = "", question_ids=()) -> int:
+    name, explanation, notes = _clean_concept(name, explanation, notes)
+    try:
+        with conn:
+            concept_id = conn.execute(
+                "INSERT INTO prep_concepts (name, explanation, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                (name, explanation, notes, now(), now()),
+            ).lastrowid
+            for question_id in question_ids:
+                conn.execute(
+                    "INSERT OR IGNORE INTO prep_question_concepts (question_id, concept_id)"
+                    " SELECT id, ? FROM prep_questions WHERE id = ?",
+                    (concept_id, int(question_id)),
+                )
+    except sqlite3.IntegrityError:
+        raise ValueError(f"there is already a concept called {name}") from None
+    return concept_id
+
+
+def update_concept(conn, concept_id: int, name: str, explanation: str = "", notes: str = "") -> None:
+    name, explanation, notes = _clean_concept(name, explanation, notes)
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE prep_concepts SET name = ?, explanation = ?, notes = ?, updated_at = ? WHERE id = ?",
+                (name, explanation, notes, now(), concept_id),
+            )
+    except sqlite3.IntegrityError:
+        raise ValueError(f"there is already a concept called {name}") from None
+
+
+def delete_concept(conn, concept_id: int) -> None:
+    """Delete a concept; the questions it was linked to are kept."""
+    with conn:
+        conn.execute("DELETE FROM prep_concepts WHERE id = ?", (concept_id,))
+
+
+def link_concept(conn, question_id: int, concept_id: int) -> None:
+    with conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO prep_question_concepts (question_id, concept_id) VALUES (?, ?)",
+            (question_id, concept_id),
+        )
+
+
+def unlink_concept(conn, question_id: int, concept_id: int) -> None:
+    with conn:
+        conn.execute(
+            "DELETE FROM prep_question_concepts WHERE question_id = ? AND concept_id = ?", (question_id, concept_id)
+        )
+
+
+def concepts_for_question(conn, question_id: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        _CONCEPT_SELECT + " JOIN prep_question_concepts l ON l.concept_id = c.id WHERE l.question_id = ?"
+        " ORDER BY c.name COLLATE NOCASE",
+        (question_id,),
+    ).fetchall()
+
+
+def questions_for_concept(conn, concept_id: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        _QUESTION_SELECT + " JOIN prep_question_concepts l ON l.question_id = q.id WHERE l.concept_id = ?"
+        " ORDER BY q.created_at, q.id",
+        (concept_id,),
+    ).fetchall()
 
 
 def fail_pending(conn) -> None:

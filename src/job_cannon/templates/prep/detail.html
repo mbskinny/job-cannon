@@ -64,6 +64,38 @@
       {% if question.notes %}<div class="notes prep-notes">{{ question.notes }}</div>
       {% else %}<p class="muted">No notes. <a href="{{ here }}/edit">Add talking points</a> or a STAR outline.</p>{% endif %}
     </article>
+
+    <article id="concepts">
+      <header><h2>Concepts</h2></header>
+      {% if concepts %}
+      <ul class="concept-links">
+        {% for k in concepts %}
+        <li>
+          <details>
+            <summary><strong>{{ k.name }}</strong></summary>
+            {% if k.explanation %}<p class="answer-body"><small>{{ k.explanation }}</small></p>{% else %}<p class="muted"><small>No explanation yet.</small></p>{% endif %}
+            <small><a href="/prep/concepts/{{ k.id }}">Rehearse</a> ·
+              <form method="post" action="/prep/concepts/{{ k.id }}/unlink" class="inline">
+                <input type="hidden" name="question_id" value="{{ question.id }}">
+                <input type="hidden" name="next" value="{{ here }}#concepts">
+                <button class="link muted">Unlink</button>
+              </form></small>
+          </details>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted"><small>Tools, methods or ideas this answer relies on, to explain quickly.</small></p>{% endif %}
+      {% if other_concepts %}
+      <form method="post" action="{{ here }}/concepts" class="start-draft">
+        <select name="concept_id" aria-label="Concept to link" required>
+          <option value="">Link a concept…</option>
+          {% for k in other_concepts %}<option value="{{ k.id }}">{{ k.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="secondary">Link</button>
+      </form>
+      {% endif %}
+      <p><small><a href="/prep/concepts/new?question={{ question.id }}">+ New concept for this question</a></small></p>
+    </article>
   </div>
 </div>
 {% endblock %}

@@ -173,10 +173,13 @@ async def delete_answer(request: Request, answer_id: int):
 def detail_page(request: Request, question, status_code: int = 200, **extra):
     c = conn(request)
     extra.setdefault("application", request.query_params.get("application", ""))
+    concepts = prep.concepts_for_question(c, question["id"])
+    linked = {k["id"] for k in concepts}
     return render(
         request, "prep/detail.html", status_code=status_code, question=question,
         tags=prep.parse_tags(question["tags"]), answers=prep.answers_for_question(c, question["id"]),
-        applications=_active_applications(request), voice_available=transcribe.available(), **extra,
+        applications=_active_applications(request), voice_available=transcribe.available(),
+        concepts=concepts, other_concepts=[k for k in prep.list_concepts(c) if k["id"] not in linked], **extra,
     )
 
 
@@ -214,6 +217,17 @@ async def delete(request: Request, question_id: int):
     for name in prep.delete_question(conn(request), question_id):
         (files_dir / name).unlink(missing_ok=True)
     return redirect("/prep")
+
+
+@router.post("/{question_id}/concepts")
+async def link_concept(request: Request, question_id: int):
+    _question_or_404(request, question_id)
+    form = await request.form()
+    concept_id = form.get("concept_id", "")
+    if not concept_id.isdigit() or prep.get_concept(conn(request), int(concept_id)) is None:
+        raise HTTPException(400, "Choose a concept")
+    prep.link_concept(conn(request), question_id, int(concept_id))
+    return redirect(f"/prep/{question_id}#concepts")
 
 
 @router.post("/{question_id}/answers")

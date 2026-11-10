@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Concepts · Interview prep{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Interview prep</h1>
+    <p>Concepts: the tools, methods and ideas you need to explain quickly and clearly, whichever question brings them up.</p>
+  </hgroup>
+  <a href="/prep/concepts/new" role="button">+ New concept</a>
+</div>
+{% with tab = 'concepts' %}{% include "prep/_tabs.html" %}{% endwith %}
+{% if total %}
+<form class="filters prep-filters" action="/prep/concepts" hx-get="/prep/concepts" hx-target="#concepts" hx-trigger="input delay:250ms, change" hx-push-url="true">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search concepts…" aria-label="Search">
+  <button type="submit" formaction="/prep/concepts/random" class="secondary outline" title="Open a random concept with its explanation hidden, so you say it first">Test me</button>
+  <noscript><button>Filter</button></noscript>
+</form>
+<div id="concepts">{% include "prep/_concepts.html" %}</div>
+{% else %}
+<article>
+  <p>No concepts yet. A concept is something you'll want to explain in an interview, whatever the question:
+    a tool you've used, a method, a piece of your field. Write the short explanation you want to give
+    from memory, then rehearse it here and link it to the questions where it comes up.</p>
+  <a href="/prep/concepts/new" role="button">Add a concept</a>
+</article>
+{% endif %}
+{% endblock %}
