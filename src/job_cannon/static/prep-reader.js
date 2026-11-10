@@ -118,15 +118,20 @@
     run.box.querySelector("[data-pass]").textContent = text;
   }
 
-  // After each read: the user's turn every N reads, then another read if repeating.
-  function afterPass(run) {
-    const every = parseInt(rehearseSelect ? rehearseSelect.value : "0", 10) || 0;
-    if (every && run.pass % every === 0) yourTurn(run);
-    else next(run);
+  function rehearseEvery() {
+    return parseInt(rehearseSelect ? rehearseSelect.value : "0", 10) || 0;
   }
 
-  function next(run) {
-    if (run.box.querySelector("[data-repeat]").checked) {
+  // After each read: the user's turn every N reads. Without Repeat, it reads
+  // up to the first turn (N reads) and stops after it; with Repeat it cycles.
+  function afterPass(run) {
+    const every = rehearseEvery();
+    if (every && run.pass % every === 0) yourTurn(run);
+    else next(run, every > 0);
+  }
+
+  function next(run, beforeTurn = false) {
+    if (beforeTurn || run.box.querySelector("[data-repeat]").checked) {
       run.timer = setTimeout(() => current === run && speakPass(run), PAUSE_MS);
     } else {
       stop();
