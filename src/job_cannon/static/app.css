@@ -366,7 +366,8 @@ button.tag-pill { all: unset; cursor: pointer; padding: 0 0.2rem; border-radius:
 button.tag-pill:hover { background: var(--jc-sunken); color: var(--jc-ink); text-decoration: none; }
 button.tag-pill:focus-visible { outline: 2px solid var(--pico-primary-focus); outline-offset: 1px; }
 button.tag-pill[aria-pressed=true] { color: var(--jc-muted); text-decoration: none; opacity: 0.6; }
-.prep-tabs { display: flex; gap: 1.5rem; margin: 0 0 var(--pico-spacing); border-bottom: 1px solid var(--jc-rule); }
+/* Pico spreads a <nav>'s children apart (space-between); keep the tabs together on the left. */
+.prep-tabs { display: flex; justify-content: flex-start; gap: 1.5rem; margin: 0 0 var(--pico-spacing); border-bottom: 1px solid var(--jc-rule); }
 .prep-tabs a { padding: 0.3rem 0; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--jc-ink-soft); font-weight: 600; text-decoration: none; }
 .prep-tabs a:hover { color: var(--jc-ink); }
 .prep-tabs a[aria-current=page] { color: var(--jc-ink); border-bottom-color: var(--jc-brass); }
