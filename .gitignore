@@ -9,3 +9,6 @@ data/
 
 # Personal job-search profile read by the skills (see .claude/job-search.example.md)
 .claude/job-search.local.md
+
+# Claude Code's local git worktrees
+.claude/worktrees/
