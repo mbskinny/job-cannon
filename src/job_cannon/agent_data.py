@@ -84,6 +84,10 @@ def question_with_answers(conn, row: sqlite3.Row) -> dict:
     }
 
 
+def experience_note_dict(row: sqlite3.Row) -> dict:
+    return {"id": row["id"], "title": row["title"], "body": row["body"], "updated_at": row["updated_at"]}
+
+
 def concept_summary(row: sqlite3.Row) -> dict:
     return {"id": row["id"], "name": row["name"], "explanation": row["explanation"]}
 

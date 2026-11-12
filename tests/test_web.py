@@ -428,6 +428,38 @@ def test_prep_concepts_pages_and_links(client):
     assert client.get(f"/prep/{q_id}").status_code == 200
 
 
+def test_prep_experience_notes_pages(client):
+    assert 'href="/prep/experience"' in client.get("/prep").text
+    page = client.get("/prep/experience").text
+    assert "No notes yet" in page and 'aria-current="page">Experience' in page
+    assert client.post("/prep/experience", data={"title": " ", "body": "x"}).status_code == 422
+
+    resp = client.post("/prep/experience", data={"title": "Lab tech at Acme", "body": "Ran assays.\nCut turnaround 30%."}, follow_redirects=False)
+    note_url = resp.headers["location"]
+    assert re.fullmatch(r"/prep/experience/\d+", note_url)
+    assert "Cut turnaround 30%." in client.get(note_url).text
+    md = "## Results\n- **30%** faster\n\n<script>alert(1)</script> [bad](javascript:alert(1)) [ok](https://acme.example)\n\n![img](https://x.example/a.png)"
+    client.post(note_url, data={"title": "Lab tech at Acme", "body": md})
+    page = client.get(note_url).text
+    assert "<h2>Results</h2>" in page and "<li><strong>30%</strong> faster</li>" in page
+    assert "<script>alert(1)" not in page and "&lt;script&gt;" in page
+    assert 'href="javascript' not in page and 'href="https://acme.example"' in page and "<img" not in page
+    excerpt = client.get("/prep/experience", headers={"HX-Request": "true"}).text
+    assert "Results" in excerpt and "**" not in excerpt and "<h2>" not in excerpt
+    client.post("/prep/experience", data={"title": "LIMS migration"})
+
+    listing = client.get("/prep/experience?q=faster", headers={"HX-Request": "true"}).text
+    assert "Lab tech at Acme" in listing and "LIMS" not in listing and "<html" not in listing
+    assert "Lab tech at Acme" in client.get(f"{note_url}/edit").text
+
+    assert client.post(note_url, data={"title": "", "body": "kept"}).status_code == 422
+    client.post(note_url, data={"title": "Lab technician", "body": "Ran assays daily."})
+    assert "Ran assays daily." in client.get(note_url).text
+    client.post(f"{note_url}/delete")
+    assert client.get(note_url).status_code == 404
+    assert client.get("/prep/experience/999/edit").status_code == 404
+
+
 def test_prep_question_form_tag_pills(client):
     assert "data-tag-picker" not in client.get("/prep/new").text  # no tags yet
     client.post("/prep", data={"prompt": "Lead a team?", "tags": "Leadership"})

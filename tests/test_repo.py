@@ -397,6 +397,28 @@ def test_prep_concepts_linked_to_questions(conn):
     assert prep.get_question(conn, q2) is not None and prep.concepts_for_question(conn, q2) == []
 
 
+def test_experience_notes(conn):
+    from job_cannon.repo import prep
+
+    a = prep.create_note(conn, "  Lab tech   at Acme ", "Ran assays.\r\nCut turnaround 30%.\n")
+    note = prep.get_note(conn, a)
+    assert (note["title"], note["body"]) == ("Lab tech at Acme", "Ran assays.\nCut turnaround 30%.")
+    with pytest.raises(ValueError, match="title"):
+        prep.create_note(conn, " ")
+    b = prep.create_note(conn, "LIMS migration")
+    with conn:  # timestamps are to the second, so make the order explicit
+        conn.execute("UPDATE experience_notes SET updated_at = '2026-01-01T00:00:00+00:00' WHERE id = ?", (a,))
+    assert [n["id"] for n in prep.list_notes(conn)] == [b, a]  # most recently edited first
+    prep.update_note(conn, a, "Lab technician at Acme", "Ran assays daily.")
+    assert prep.get_note(conn, a)["updated_at"] > "2026-01-01T00:00:00+00:00"
+    assert [n["id"] for n in prep.list_notes(conn, q="assays")] == [a]
+    assert [n["id"] for n in prep.list_notes(conn, q="lims")] == [b]
+    with pytest.raises(ValueError):
+        prep.update_note(conn, a, "")
+    prep.delete_note(conn, a)
+    assert prep.get_note(conn, a) is None and len(prep.list_notes(conn)) == 1
+
+
 def test_starter_questions_by_sector(conn):
     from job_cannon.repo import prep
 

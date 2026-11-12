@@ -2,12 +2,14 @@
 
 Usage (from the repo root):
     uv run python .claude/skills/answer-application-question/scripts/prep_answers.py list
+    uv run python .claude/skills/answer-application-question/scripts/prep_answers.py experience
     uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --question ID [--app APP_ID] [--ai-draft]
     uv run python .claude/skills/answer-application-question/scripts/prep_answers.py save answer.txt --new-question TEXT [--tags a,b] [--app APP_ID] [--ai-draft]
 
 list prints every prep question with its tags, notes and answers as JSON
 (answers without text yet, e.g. a recording still being transcribed, are left
-out). save stores the text as a typed answer, under an existing question or a
+out). experience prints the user's experience notes (raw notes about their
+work history) as JSON. save stores the text as a typed answer, under an existing question or a
 new one (reusing a question with the same wording if there is one), optionally
 linked to an application; --ai-draft marks it as written by AI. Data folder and profile resolve the same way as the
 app: --data-dir, then JOB_CANNON_DATA, then ~/JobCannon; --profile, then
@@ -29,6 +31,7 @@ def main() -> int:
     p.add_argument("--profile")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("list", help="JSON: prep questions with tags, notes and answers")
+    sub.add_parser("experience", help="JSON: the user's experience notes")
     p_save = sub.add_parser("save", help="store a text answer in the prep bank")
     p_save.add_argument("file", help="text file with the answer")
     target = p_save.add_mutually_exclusive_group(required=True)
@@ -54,6 +57,14 @@ def main() -> int:
         out = {
             "profile": profile.name,
             "questions": [agent_data.question_with_answers(conn, q) for q in prep.list_questions(conn)],
+        }
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "experience":
+        out = {
+            "profile": profile.name,
+            "notes": [agent_data.experience_note_dict(n) for n in prep.list_notes(conn)],
         }
         print(json.dumps(out, indent=2, ensure_ascii=False))
         return 0

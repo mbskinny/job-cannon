@@ -372,6 +372,17 @@ button.tag-pill[aria-pressed=true] { color: var(--jc-muted); text-decoration: no
 .prep-tabs a:hover { color: var(--jc-ink); }
 .prep-tabs a[aria-current=page] { color: var(--jc-ink); border-bottom-color: var(--jc-brass); }
 .concept-hide { font-size: 0.9rem; }
+/* Rendered Markdown (experience notes): tighter headings than a page, and no trailing gap. */
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown :is(h1, h2, h3, h4, h5, h6) { margin: 1.4em 0 0.5em; }
+.markdown h1 { font-size: 1.6rem; }
+.markdown h2 { font-size: 1.35rem; }
+.markdown :is(h3, h4, h5, h6) { font-size: 1.15rem; }
+.markdown :is(ul, ol) { padding-left: 1.4rem; }
+.markdown li { list-style: revert; margin-bottom: 0.25rem; }
+.markdown blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 3px solid var(--jc-brass); color: var(--jc-ink-soft); }
+.markdown pre { padding: 0.75rem 1rem; overflow-x: auto; }
 .concept-body { font-size: 1.1rem; line-height: 1.6; transition: filter 0.2s; }
 /* "Hide it" blurs the explanation so it can be said from memory first; reading aloud still works. */
 .concept-explain:has([data-hide]:checked) .concept-body { filter: blur(0.45em); user-select: none; }

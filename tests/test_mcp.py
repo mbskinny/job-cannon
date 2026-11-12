@@ -30,6 +30,7 @@ def test_tools_listed_with_read_only_hints(call):
     assert set(tools) == {
         "list_applications", "get_application", "list_prep_questions", "get_prep_question",
         "save_prep_answer", "create_prep_question", "list_prep_concepts", "get_prep_concept", "create_prep_concept",
+        "list_experience_notes", "create_experience_note",
     }
     assert tools["get_prep_question"].annotations.read_only_hint is True
     assert tools["save_prep_answer"].annotations.read_only_hint is False
@@ -121,6 +122,18 @@ def test_prep_concepts(call, conn):
         asyncio.run(call.server.call_tool("create_prep_concept", {"name": "X", "explanation": "", "question_ids": [999]}))
     with pytest.raises(ToolError, match="No prep concept"):
         asyncio.run(call.server.call_tool("get_prep_concept", {"concept_id": 999}))
+
+
+def test_experience_notes(call, conn):
+    made = call("create_experience_note", title="Lab tech at Acme", body="Ran assays.")
+    assert made["url"].endswith(f"/prep/experience/{made['note_id']}")
+    prep.create_note(conn, "LIMS migration", "Moved 10k samples.")
+    notes = call("list_experience_notes")["notes"]
+    assert [n["title"] for n in notes] == ["LIMS migration", "Lab tech at Acme"]
+    found = call("list_experience_notes", search="assays")["notes"]
+    assert [(n["id"], n["body"]) for n in found] == [(made["note_id"], "Ran assays.")]
+    with pytest.raises(ToolError, match="title"):
+        asyncio.run(call.server.call_tool("create_experience_note", {"title": " ", "body": "x"}))
 
 
 def test_profile_resolved_on_each_call(call, cfg):

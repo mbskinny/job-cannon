@@ -26,7 +26,10 @@ INSTRUCTIONS = """\
 Job Cannon is the user's local job-search tracker: applications, and an
 interview prep bank of questions with practice answers, plus concepts: short
 explanations of a tool, method or idea that the user rehearses so they can
-explain it quickly in any answer. Every result names the
+explain it quickly in any answer, and experience notes: the user's own raw
+notes about their work (jobs, projects, stories, numbers). Treat experience
+notes as facts about the user alongside their résumé, and draw on them for
+specifics when drafting answers. Every result names the
 profile (several people can share one install); mention it if it isn't the
 person you're helping. Prep answers with ai_draft=1 were written by an AI, not
 the user: use them for content, but take the user's voice from their own
@@ -185,6 +188,27 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
                 "profile": profile_name, "concept_id": concept_id, "existing": existing,
                 "url": f"http://127.0.0.1:8765/prep/concepts/{concept_id}",
             }
+
+    @server.tool(annotations=READ)
+    def list_experience_notes(search: str | None = None) -> dict[str, Any]:
+        """The user's experience notes: raw notes about their work history (jobs, projects, stories,
+        tools, numbers), in full. They are facts about the user, written by them; use them for specifics
+        when drafting answers. search: matches the title and body."""
+        with opened() as (name, _cfg, conn):
+            rows = prep.list_notes(conn, q=search or None)
+            return {"profile": name, "notes": [agent_data.experience_note_dict(r) for r in rows]}
+
+    @server.tool(annotations=ADD)
+    def create_experience_note(title: str, body: str) -> dict[str, Any]:
+        """Add an experience note: facts the user has told you about their work (a job, project or story),
+        in their words, e.g. title "Lab technician at Acme (2021-23)". Only record what the user said;
+        never invent. Ask the user first."""
+        with opened() as (name, _cfg, conn):
+            try:
+                note_id = prep.create_note(conn, title, body)
+            except ValueError as exc:
+                raise ToolError(str(exc)) from exc
+            return {"profile": name, "note_id": note_id, "url": f"http://127.0.0.1:8765/prep/experience/{note_id}"}
 
     return server
 

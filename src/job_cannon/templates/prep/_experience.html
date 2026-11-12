@@ -1,0 +1,18 @@
+{% if rows %}
+<div class="table-wrap">
+<table class="striped">
+  <thead><tr><th>Note</th><th>Excerpt</th><th>Edited</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><a href="/prep/experience/{{ r.id }}"><strong>{{ r.title }}</strong></a></td>
+      <td>{% if r.body %}<small>{{ r.body|markdown_text|truncate(140) }}</small>{% else %}<small class="muted">Empty</small>{% endif %}</td>
+      <td><small>{{ r.updated_at[:10] }}</small></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">No notes match.</p>
+{% endif %}

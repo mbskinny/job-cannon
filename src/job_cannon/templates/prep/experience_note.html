@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ note.title }} · Experience{% endblock %}
+{% block content %}
+<p><a href="/prep/experience">← All experience notes</a></p>
+<div class="page-head">
+  <hgroup>
+    <h1 class="prep-prompt">{{ note.title }}</h1>
+    <p>Experience note · edited {{ note.updated_at[:10] }}</p>
+  </hgroup>
+  <div class="head-actions">
+    <a href="/prep/experience/{{ note.id }}/edit" role="button" class="secondary outline">Edit</a>
+  </div>
+</div>
+<article>
+  {% if note.body %}<div class="markdown">{{ note.body|markdown }}</div>
+  {% else %}<p class="muted">Nothing written yet. <a href="/prep/experience/{{ note.id }}/edit">Add your notes</a>.</p>{% endif %}
+</article>
+{% endblock %}

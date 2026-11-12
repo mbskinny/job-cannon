@@ -27,6 +27,13 @@ If no id was given but the question or conversation names a company, find it wit
 ## 2. Gather material
 
 - **Résumé**: read the file at `job_search_file` (from `profiles --json`, step 1) for the résumé location and any notes. If it doesn't exist and the profile id is `default`, fall back to `.claude/job-search.local.md`. If neither exists, or it has no résumé, ask the user to fill in Job search notes in their profile settings (`http://127.0.0.1:8765/profiles/<id>#notes`), where they can also upload a résumé file, and stop until they have. Get the résumé from `resume` in `profiles --json` (it resolves relative paths and uploads; for the `.claude/job-search.local.md` fallback, read the location from that file): WebFetch a URL, Read a PDF, and run `uv run job-cannon resume-text` (with the same `--profile`) for a .docx, .odt, .txt or .md file. The résumé, plus that file's notes, is the source of truth for facts about the user.
+- **Experience notes**: the user's own raw notes about their work (jobs, projects, stories, tools, numbers), kept in the Experience tab of Interview prep. Read them (read-only):
+
+  ```sh
+  uv run python .claude/skills/answer-application-question/scripts/prep_answers.py experience
+  ```
+
+  They count as facts about the user alongside the résumé, and they're usually the best source of specific stories, details and numbers, so look for the notes that bear on the question. They're rough and private: rewrite, don't quote. If a note and the résumé disagree on dates, titles or employers, go with the résumé and mention the mismatch to the user. If there are none, carry on with the résumé, and when the answer comes out thin, suggest the user adds notes at `http://127.0.0.1:8765/prep/experience`.
 - **Posting**: only fetch `posting_url` when the question is about the role or company ("why us", "how does your experience match") and the application notes aren't enough. WebFetch, or for LinkedIn the user's Chrome (claude-in-chrome, new tab, `https://www.linkedin.com/jobs/view/<id>/`). **Read only**: never click Apply or anything that sends something.
 - **Already-written material**: the cover letter draft and any `cover_letter` attachment (Read the PDF path). Keep the answer consistent with what the user has sent or will send, but don't copy whole paragraphs from the letter; forms often go to the same reader.
 - **Interactions**: what a recruiter or interviewer said is often the best evidence for "why this role".
@@ -42,7 +49,7 @@ If no id was given but the question or conversation names a company, find it wit
 
 - Answer the question that was asked, first sentence first. No preamble ("Great question", "I am writing to...").
 - **Respect the limit**. If the form gives a character or word limit, stay under it and state the count. If not, aim for what the question implies: one line for factual questions, 80-150 words for open ones.
-- **Never invent** experience, numbers, employers, dates, or skills that aren't in the résumé or the profile notes. If the honest answer is weak or missing (e.g. a required tool, qualification or curriculum the résumé doesn't show), say so to the user and suggest an honest framing rather than stretching the truth.
+- **Never invent** experience, numbers, employers, dates, or skills that aren't in the résumé, the experience notes or the profile notes. If the honest answer is weak or missing (e.g. a required tool, qualification or curriculum the résumé doesn't show), say so to the user and suggest an honest framing rather than stretching the truth.
 - Be specific to this company and role when there is application context: tie a concrete thing from the résumé to a concrete thing in the posting or notes.
 - Write in the user's voice: first person, plain, confident, no buzzwords. Follow the sector guide's *Writing* section for register and what counts as evidence. Match the form's language (an Italian form gets an Italian answer) unless the user says otherwise.
 - **Factual / eligibility questions** (work authorization, relocation, notice period, start date, salary expectations): answer from the profile notes and application data. If the answer isn't there, ask the user rather than guessing. For salary, use the user's stated floor or the posting's range if known, and mention which you used.

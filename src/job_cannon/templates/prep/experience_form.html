@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if note else 'New' }} experience note{% endblock %}
+{% block content %}
+{% set back = '/prep/experience/%d' % note.id if note else '/prep/experience' %}
+<h1>{{ 'Edit experience note' if note else 'New experience note' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/prep/experience/%d' % note.id if note else '/prep/experience' }}">
+  <label>Title *
+    <input name="title" value="{{ values.title or '' }}" required {% if not note %}autofocus{% endif %} placeholder="e.g. Lab technician at Acme (2021–23)">
+  </label>
+  <label>Notes
+    <textarea name="body" rows="20" placeholder="What you did, tools and methods, problems you solved, results and numbers, people you worked with, things you're proud of. Rough notes are fine.">{{ values.body or '' }}</textarea>
+    <small>Markdown works: <code># Heading</code>, <code>- list</code>, <code>**bold**</code>, <code>[link](https://…)</code>. Claude treats these notes as facts about you when drafting, so keep them true.</small>
+  </label>
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="{{ back }}" role="button" class="secondary outline">Back</a>
+  </div>
+</form>
+{% if note %}
+<form method="post" action="/prep/experience/{{ note.id }}/delete" onsubmit="return confirm('Delete this note?')">
+  <button class="outline danger-btn">Delete note</button>
+</form>
+{% endif %}
+{% endblock %}

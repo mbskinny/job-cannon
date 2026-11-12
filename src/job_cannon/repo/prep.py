@@ -3,6 +3,9 @@
 Concepts are short explanations to rehearse (what a tool is, how a method
 works) that can be linked to any number of questions.
 
+Experience notes are free-form notes about the user's work history (jobs,
+projects, stories, numbers), for Claude to draw on when drafting answers.
+
 Answers are typed, or recorded in the browser. Recordings are stored under
 ``files/`` and transcribed locally (see ``job_cannon.transcribe``).
 """
@@ -397,6 +400,56 @@ def questions_for_concept(conn, concept_id: int) -> list[sqlite3.Row]:
         " ORDER BY q.created_at, q.id",
         (concept_id,),
     ).fetchall()
+
+
+# --- experience notes ---
+
+
+def _note_filter(q: str | None) -> tuple[str, list]:
+    if not q:
+        return "", []
+    return " WHERE (title LIKE ? OR body LIKE ?)", [f"%{q}%"] * 2
+
+
+def list_notes(conn, q: str | None = None) -> list[sqlite3.Row]:
+    where, params = _note_filter(q)
+    return conn.execute(
+        "SELECT * FROM experience_notes" + where + " ORDER BY updated_at DESC, id DESC", params
+    ).fetchall()
+
+
+def get_note(conn, note_id: int) -> sqlite3.Row | None:
+    return conn.execute("SELECT * FROM experience_notes WHERE id = ?", (note_id,)).fetchone()
+
+
+def _clean_note(title: str, body: str) -> tuple[str, str]:
+    title = " ".join((title or "").split())
+    if not title:
+        raise ValueError("a title is required")
+    return title, _tidy(body)
+
+
+def create_note(conn, title: str, body: str = "") -> int:
+    title, body = _clean_note(title, body)
+    with conn:
+        return conn.execute(
+            "INSERT INTO experience_notes (title, body, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            (title, body, now(), now()),
+        ).lastrowid
+
+
+def update_note(conn, note_id: int, title: str, body: str = "") -> None:
+    title, body = _clean_note(title, body)
+    with conn:
+        conn.execute(
+            "UPDATE experience_notes SET title = ?, body = ?, updated_at = ? WHERE id = ?",
+            (title, body, now(), note_id),
+        )
+
+
+def delete_note(conn, note_id: int) -> None:
+    with conn:
+        conn.execute("DELETE FROM experience_notes WHERE id = ?", (note_id,))
 
 
 def fail_pending(conn) -> None:

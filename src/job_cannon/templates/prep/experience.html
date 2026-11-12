@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Experience · Interview prep{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Interview prep</h1>
+    <p>Experience: raw notes about your work (jobs, projects, wins, numbers). Claude draws on them when drafting your answers and cover letters.</p>
+  </hgroup>
+  <a href="/prep/experience/new" role="button">+ New note</a>
+</div>
+{% with tab = 'experience' %}{% include "prep/_tabs.html" %}{% endwith %}
+{% if total %}
+<form class="filters prep-filters" action="/prep/experience" hx-get="/prep/experience" hx-target="#notes" hx-trigger="input delay:250ms, change" hx-push-url="true">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search notes…" aria-label="Search">
+  <noscript><button>Filter</button></noscript>
+</form>
+<div id="notes">{% include "prep/_experience.html" %}</div>
+{% else %}
+<article>
+  <p>No notes yet. Jot down whatever you remember about your work, rough is fine: one note per job,
+    project or story, with what you did, the tools you used, problems you solved and any numbers.
+    Your résumé only has room for the headlines; these notes give Claude the details to draft
+    answers that sound like you and are true.</p>
+  <a href="/prep/experience/new" role="button">Add a note</a>
+</article>
+{% endif %}
+{% endblock %}

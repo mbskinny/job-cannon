@@ -13,6 +13,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
+from markupsafe import Markup
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from job_cannon import db, profiles
@@ -56,6 +58,25 @@ def http_only(url: str) -> str:
 
 
 templates.env.filters["http_only"] = http_only
+
+# Markdown for user notes: raw HTML is escaped, not passed through, images are off
+# (the app works offline and shouldn't fetch from anywhere), and links may only be
+# relative, http(s) or mailto.
+_md = MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"]).disable("image")
+_md.validateLink = lambda url: urlsplit(url.strip()).scheme.lower() in ("", "http", "https", "mailto")
+
+
+def markdown(text: str | None) -> Markup:
+    return Markup(_md.render(text or ""))
+
+
+def markdown_text(text: str | None) -> str:
+    """The text of rendered Markdown without its markup, e.g. for a one-line excerpt."""
+    return markdown(text).striptags()
+
+
+templates.env.filters["markdown"] = markdown
+templates.env.filters["markdown_text"] = markdown_text
 
 
 def render(request: Request, name: str, status_code: int = 200, **context):
@@ -184,11 +205,11 @@ def create_app(root: Path, profile: str | None = None) -> FastAPI:
     from job_cannon.web.routes import applications as r_apps
     from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files, find_jobs
     from job_cannon.web.routes import prep as r_prep
-    from job_cannon.web.routes import prep_concepts
+    from job_cannon.web.routes import prep_concepts, prep_experience
     from job_cannon.web.routes import profiles as r_profiles
     from job_cannon.web.routes import interactions as r_interactions
 
-    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, prep_concepts, r_prep, r_profiles, find_jobs):
+    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, prep_concepts, prep_experience, r_prep, r_profiles, find_jobs):
         app.include_router(module.router)
 
     return app
