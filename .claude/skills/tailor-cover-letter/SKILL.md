@@ -29,7 +29,7 @@ If a draft already exists, ask before replacing it, because the user may have ed
 
 ## 3. Choose the base letter
 
-Use the one the user named. Otherwise pick the one whose name and content best fit the role, and say which you chose and why in one line.
+Use the one the user named. Otherwise use the default base letter (`"default": true` in `context`) if one is set; if another base letter clearly fits this role better, still use the default but mention the other in one line. With no default, pick the one whose name and content best fit the role, and say which you chose and why in one line.
 
 ## 4. Fill the placeholders
 

@@ -1,4 +1,5 @@
 import io
+import sqlite3
 from datetime import date
 
 import pytest
@@ -428,3 +429,26 @@ def test_starter_questions_by_sector(conn):
     assert not prompts & {q for q, _ in prep.SECTOR_QUESTIONS["software"]}
     assert prep.add_starter_questions(conn, "teaching") == 0
     assert prep.add_starter_questions(conn) == 0  # general set already there
+
+
+def test_default_cover_letter(conn):
+    a = cover_letters.create_template(conn, "B letter", "b")
+    b = cover_letters.create_template(conn, "A letter", "a")
+    assert [t["id"] for t in cover_letters.list_templates(conn)] == [b, a]
+
+    cover_letters.set_default(conn, a)
+    assert [(t["id"], t["is_default"]) for t in cover_letters.list_templates(conn)] == [(a, 1), (b, 0)]
+    cover_letters.set_default(conn, b)
+    assert [(t["id"], t["is_default"]) for t in cover_letters.list_templates(conn)] == [(b, 1), (a, 0)]
+    with pytest.raises(sqlite3.IntegrityError):
+        with conn:
+            conn.execute("UPDATE cover_letter_templates SET is_default = 1")
+    with pytest.raises(ValueError):
+        cover_letters.set_default(conn, 999)
+    assert cover_letters.get_template(conn, b)["is_default"] == 1
+
+    cover_letters.set_default(conn, None)
+    assert not any(t["is_default"] for t in cover_letters.list_templates(conn))
+    cover_letters.set_default(conn, a)
+    cover_letters.delete_template(conn, a)
+    assert not any(t["is_default"] for t in cover_letters.list_templates(conn))

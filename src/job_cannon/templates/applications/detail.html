@@ -76,7 +76,7 @@
       {% elif letter_templates %}
       <form method="post" action="{{ here }}/cover-letter" class="start-draft">
         <select name="template_id" aria-label="Base letter">
-          {% for t in letter_templates %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+          {% for t in letter_templates %}<option value="{{ t.id }}"{% if t.is_default %} selected{% endif %}>{{ t.name }}{% if t.is_default %} (default){% endif %}</option>{% endfor %}
         </select>
         <button type="submit" class="secondary">Start draft</button>
       </form>

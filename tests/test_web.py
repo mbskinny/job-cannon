@@ -525,3 +525,24 @@ def test_port_check_ignores_connections_left_by_a_stopped_server():
         assert cli.port_free("127.0.0.1", port)
     finally:
         client.close()
+
+
+def test_default_base_letter(client):
+    client.post("/cover-letters", data={"name": "Alpha", "body": "A"})
+    client.post("/cover-letters", data={"name": "Beta", "body": "B"})
+    index = client.get("/cover-letters").text
+    ids = dict((name, i) for i, name in re.findall(r'/cover-letters/(\d+)">(\w+)<', index))
+    assert "★ Default" not in index and index.count("Make default") == 2
+
+    resp = client.post(f"/cover-letters/{ids['Beta']}/default", follow_redirects=False)
+    assert resp.status_code == 303
+    index = client.get("/cover-letters").text
+    assert index.index("Beta") < index.index("Alpha") and index.count("Make default") == 1
+
+    app_id = _create_app(client)
+    page = client.get(f"/applications/{app_id}").text
+    assert f'<option value="{ids["Beta"]}" selected>Beta (default)</option>' in page
+
+    client.post(f"/cover-letters/{ids['Beta']}/default", data={"on": "0"})
+    assert client.get("/cover-letters").text.count("Make default") == 2
+    assert client.post("/cover-letters/999/default").status_code == 404

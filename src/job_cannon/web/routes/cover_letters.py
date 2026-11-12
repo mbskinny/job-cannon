@@ -72,7 +72,7 @@ async def save_style(request: Request):
 
 @router.post("/cover-letters/style/preview")
 async def preview_style(request: Request):
-    """Render the (unsaved) style with the saved contact details and the first base letter, or a sample."""
+    """Render the (unsaved) style with the saved contact details and the default (else first) base letter, or a sample."""
     form = await request.form()
     try:
         style = cover_letters.clean_letter_style({k: form.get(k, "") for k in cover_letters.STYLE_FIELDS})
@@ -143,6 +143,15 @@ async def save_as_new(request: Request, template_id: int):
             error=f"{exc}. Give the new base letter a different name.",
         )
     return redirect(f"/cover-letters/{new_id}")
+
+
+@router.post("/cover-letters/{template_id}/default")
+async def set_default(request: Request, template_id: int):
+    """Make this the default base letter (``on=0`` clears the default instead)."""
+    _template_or_404(request, template_id)
+    form = await request.form()
+    cover_letters.set_default(conn(request), None if form.get("on") == "0" else template_id)
+    return redirect("/cover-letters")
 
 
 @router.post("/cover-letters/{template_id}/delete")

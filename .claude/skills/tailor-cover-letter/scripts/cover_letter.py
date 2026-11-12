@@ -27,7 +27,7 @@ def main() -> int:
     p.add_argument("--data-dir")
     p.add_argument("--profile")
     sub = p.add_subparsers(dest="command", required=True)
-    sub.add_parser("templates", help="list base letters and their placeholders")
+    sub.add_parser("templates", help="list base letters and their placeholders (default first)")
     p_ctx = sub.add_parser("context", help="JSON: application, current draft, base letters")
     p_ctx.add_argument("app_id", type=int)
     p_save = sub.add_parser("save-draft", help="store a filled letter as the application's draft")
@@ -50,7 +50,8 @@ def main() -> int:
     if args.command == "templates":
         for t in cover_letters.list_templates(conn):
             names = ", ".join(cover_letters.unfilled(t["body"])) or "(none)"
-            print(f"{t['id']}\t{t['name']}\t{names}")
+            default = "\tdefault" if t["is_default"] else ""
+            print(f"{t['id']}\t{t['name']}\t{names}{default}")
         return 0
 
     app = applications.get(conn, args.app_id)
@@ -68,6 +69,7 @@ def main() -> int:
                 {
                     "id": t["id"],
                     "name": t["name"],
+                    "default": bool(t["is_default"]),
                     "body": cover_letters.fill_builtins(t["body"], app),
                     "placeholders": [
                         {"name": n, "instruction": i} for n, i in cover_letters.placeholders(t["body"])

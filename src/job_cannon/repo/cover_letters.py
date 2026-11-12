@@ -44,7 +44,18 @@ def fill_builtins(body: str, app: sqlite3.Row, today: date | None = None) -> str
 # --- templates ---
 
 def list_templates(conn) -> list[sqlite3.Row]:
-    return conn.execute("SELECT * FROM cover_letter_templates ORDER BY name").fetchall()
+    """All base letters, the default first, then by name."""
+    return conn.execute("SELECT * FROM cover_letter_templates ORDER BY is_default DESC, name").fetchall()
+
+
+def set_default(conn, template_id: int | None) -> None:
+    """Make ``template_id`` the default base letter, or clear the default with None."""
+    with conn:
+        if template_id is not None and get_template(conn, template_id) is None:
+            raise ValueError("no such base letter")
+        conn.execute("UPDATE cover_letter_templates SET is_default = 0 WHERE is_default = 1")
+        if template_id is not None:
+            conn.execute("UPDATE cover_letter_templates SET is_default = 1 WHERE id = ?", (template_id,))
 
 
 def get_template(conn, template_id: int) -> sqlite3.Row | None:
