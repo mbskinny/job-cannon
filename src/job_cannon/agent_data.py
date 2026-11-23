@@ -89,7 +89,10 @@ def experience_note_dict(row: sqlite3.Row) -> dict:
 
 
 def concept_summary(row: sqlite3.Row) -> dict:
-    return {"id": row["id"], "name": row["name"], "explanation": row["explanation"]}
+    return {
+        "id": row["id"], "name": row["name"], "explanation": row["explanation"],
+        "tags": row["tags"].split(",") if row["tags"] else [],
+    }
 
 
 def concept_with_questions(conn, row: sqlite3.Row) -> dict:

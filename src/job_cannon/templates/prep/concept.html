@@ -10,9 +10,10 @@
   <hgroup>
     <h1 class="prep-prompt">{{ concept.name }}</h1>
     <p>Concept · linked to {{ questions|length }} question{{ '' if questions|length == 1 else 's' }}</p>
+    <p>{% for t in tags %}<a class="tag" href="/prep/concepts?tag={{ t|urlencode }}">{{ t }}</a> {% else %}<span class="muted">No tags</span>{% endfor %}</p>
   </hgroup>
   <div class="head-actions">
-    <a href="/prep/concepts/random" role="button" class="secondary outline" title="A random concept with its explanation hidden">Test me on another</a>
+    <a href="/prep/concepts/random{% if tags %}?{% for t in tags %}tag={{ t|urlencode }}{% if not loop.last %}&amp;{% endif %}{% endfor %}{% endif %}" role="button" class="secondary outline" title="A random concept with all the same tags, its explanation hidden">Test me on another</a>
     <a href="{{ here }}/edit" role="button" class="secondary outline">Edit</a>
   </div>
 </div>

@@ -398,6 +398,40 @@ def test_prep_concepts_linked_to_questions(conn):
     assert prep.get_question(conn, q2) is not None and prep.concepts_for_question(conn, q2) == []
 
 
+def test_prep_concept_tags(conn):
+    from job_cannon.repo import prep
+
+    q = prep.create_question(conn, "How do you scale a database?", tags="technical, databases")
+    a = prep.create_concept(conn, "Indexes", "Sorted trees.", tags="Databases, performance")
+    b = prep.create_concept(conn, "Sharding", tags=["databases", "scaling"])
+    c = prep.create_concept(conn, "RAG")
+    assert prep.get_concept(conn, a)["tags"] == "databases,performance"
+    assert prep.get_concept(conn, c)["tags"] is None
+    assert [r["id"] for r in prep.list_concepts(conn, tags=["databases"])] == [a, b]
+    assert [r["id"] for r in prep.list_concepts(conn, tags=["databases", "scaling"])] == [b]
+    assert [r["id"] for r in prep.list_concepts(conn, q="sorted", tags=["databases"])] == [a]
+    assert prep.random_concept_id(conn, tags=["performance"]) == a
+
+    # Questions and concepts share the vocabulary, but each lists only its own tags.
+    assert [(t["name"], t["n"]) for t in prep.list_tags(conn, of="concepts")] == [("databases", 2), ("performance", 1), ("scaling", 1)]
+    assert [t["name"] for t in prep.list_tags(conn)] == ["databases", "technical"]
+
+    prep.update_concept(conn, a, "Indexes", "Sorted trees.")  # tags=None keeps them
+    assert prep.get_concept(conn, a)["tags"] == "databases,performance"
+    prep.update_concept(conn, a, "Indexes", "Sorted trees.", tags="databases")
+    assert "performance" not in [t["name"] for t in prep.list_tags(conn, of="concepts")]
+    prep.set_concept_tags(conn, c, "ai, retrieval")
+    assert prep.get_concept(conn, c)["tags"] == "ai,retrieval"
+
+    # A tag stays while either side uses it.
+    prep.update_question(conn, q, "How do you scale a database?", tags="technical")
+    assert prep.get_concept(conn, b)["tags"] == "databases,scaling"
+    prep.delete_concept(conn, c)
+    assert "ai" not in {r[0] for r in conn.execute("SELECT name FROM prep_tags")}
+    prep.delete_question(conn, q)
+    assert {r[0] for r in conn.execute("SELECT name FROM prep_tags")} == {"databases", "scaling"}
+
+
 def test_experience_notes(conn):
     from job_cannon.repo import prep
 

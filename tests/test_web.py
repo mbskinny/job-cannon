@@ -428,6 +428,31 @@ def test_prep_concepts_pages_and_links(client):
     assert client.get(f"/prep/{q_id}").status_code == 200
 
 
+def test_prep_concept_tags_pages(client):
+    resp = client.post("/prep/concepts", data={"name": "Indexes", "explanation": "Trees.", "tags": "Databases, performance"}, follow_redirects=False)
+    k_url = resp.headers["location"]
+    client.post("/prep/concepts", data={"name": "RAG", "tags": "ai"})
+    page = client.get(k_url).text
+    assert 'href="/prep/concepts?tag=databases"' in page
+    assert "/prep/concepts/random?tag=databases&amp;tag=performance" in page
+
+    listing = client.get("/prep/concepts").text
+    assert 'name="tag" value="databases"' in listing and 'name="tag" value="ai"' in listing
+    filtered = client.get("/prep/concepts?tag=databases", headers={"HX-Request": "true"}).text
+    assert "Indexes" in filtered and "RAG" not in filtered
+    loc = client.get("/prep/concepts/random?tag=ai", follow_redirects=False).headers["location"]
+    assert loc != k_url + "?test=1" and loc.endswith("?test=1")
+
+    form = client.get(f"{k_url}/edit").text
+    assert 'value="databases, performance"' in form and 'data-tag-picker="#concept-tags"' in form
+    assert '<script src="/static/tag-picker.js"' in form
+    client.post(k_url, data={"name": "Indexes", "explanation": "Trees.", "tags": "databases"})
+    assert 'value="performance"' not in client.get("/prep/concepts").text
+    assert client.post("/prep/concepts", data={"name": " ", "tags": "x"}).status_code == 422
+    # Concept tags don't appear among the question filters.
+    assert 'value="databases"' not in client.get("/prep/new").text
+
+
 def test_prep_experience_notes_pages(client):
     assert 'href="/prep/experience"' in client.get("/prep").text
     page = client.get("/prep/experience").text

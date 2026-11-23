@@ -12,7 +12,14 @@
 {% if total %}
 <form class="filters prep-filters" action="/prep/concepts" hx-get="/prep/concepts" hx-target="#concepts" hx-trigger="input delay:250ms, change" hx-push-url="true">
   <input type="search" name="q" value="{{ q }}" placeholder="Search concepts…" aria-label="Search">
-  <button type="submit" formaction="/prep/concepts/random" class="secondary outline" title="Open a random concept with its explanation hidden, so you say it first">Test me</button>
+  <button type="submit" formaction="/prep/concepts/random" class="secondary outline" title="Open a random concept matching the filters, with its explanation hidden, so you say it first">Test me</button>
+  {% if all_tags %}
+  <fieldset class="tag-filter" aria-label="Filter by tags">
+    {% for t in all_tags %}
+    <label class="tag-chip"><input type="checkbox" name="tag" value="{{ t.name }}" {% if t.name in selected_tags %}checked{% endif %}> {{ t.name }} <small>{{ t.n }}</small></label>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
   <noscript><button>Filter</button></noscript>
 </form>
 <div id="concepts">{% include "prep/_concepts.html" %}</div>

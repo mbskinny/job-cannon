@@ -1,4 +1,4 @@
-"""Interview prep: a tagged question bank, practice answers, and concepts.
+"""Interview prep: a tagged question bank, practice answers, and tagged concepts.
 
 Concepts are short explanations to rehearse (what a tool is, how a method
 works) that can be linked to any number of questions.
@@ -84,12 +84,9 @@ def _filter(q: str | None, tags: list[str]) -> tuple[str, list]:
     if q:
         where.append("(q.prompt LIKE ? OR q.notes LIKE ?)")
         params += [f"%{q}%"] * 2
-    for tag in parse_tags(tags):
-        where.append(
-            "EXISTS (SELECT 1 FROM prep_question_tags qt JOIN prep_tags t ON t.id = qt.tag_id"
-            " WHERE qt.question_id = q.id AND t.name = ?)"
-        )
-        params.append(tag)
+    conds, names = _tag_filter("questions", "q", tags)
+    where += conds
+    params += names
     return (" WHERE " + " AND ".join(where) if where else ""), params
 
 
@@ -109,11 +106,48 @@ def get_question(conn, question_id: int) -> sqlite3.Row | None:
     return conn.execute(_QUESTION_SELECT + " WHERE q.id = ?", (question_id,)).fetchone()
 
 
-def list_tags(conn) -> list[sqlite3.Row]:
+# Questions and concepts share prep_tags; each has its own link table.
+_TAG_LINKS = {
+    "questions": ("prep_question_tags", "question_id"),
+    "concepts": ("prep_concept_tags", "concept_id"),
+}
+
+
+def list_tags(conn, of: str = "questions") -> list[sqlite3.Row]:
+    """Tags used by questions (or ``of="concepts"``), with how many each one has."""
+    table, col = _TAG_LINKS[of]
     return conn.execute(
-        "SELECT t.name, count(qt.question_id) AS n FROM prep_tags t"
-        " LEFT JOIN prep_question_tags qt ON qt.tag_id = t.id GROUP BY t.id ORDER BY t.name"
+        f"SELECT t.name, count(l.{col}) AS n FROM prep_tags t"
+        f" JOIN {table} l ON l.tag_id = t.id GROUP BY t.id ORDER BY t.name"
     ).fetchall()
+
+
+def _drop_unused_tags(conn) -> None:
+    conn.execute(
+        "DELETE FROM prep_tags WHERE id NOT IN (SELECT tag_id FROM prep_question_tags)"
+        " AND id NOT IN (SELECT tag_id FROM prep_concept_tags)"
+    )
+
+
+def _replace_tags(conn, of: str, item_id: int, tags: list[str]) -> None:
+    """Replace a question's or concept's tags and drop unused tags. Call inside ``with conn``."""
+    table, col = _TAG_LINKS[of]
+    conn.execute(f"DELETE FROM {table} WHERE {col} = ?", (item_id,))
+    for name in parse_tags(tags):
+        conn.execute("INSERT OR IGNORE INTO prep_tags (name) VALUES (?)", (name,))
+        conn.execute(f"INSERT INTO {table} ({col}, tag_id) SELECT ?, id FROM prep_tags WHERE name = ?", (item_id, name))
+    _drop_unused_tags(conn)
+
+
+def _tag_filter(of: str, alias: str, tags: list[str]) -> tuple[list[str], list]:
+    """SQL conditions requiring *all* of ``tags`` on the row aliased ``alias``."""
+    table, col = _TAG_LINKS[of]
+    names = parse_tags(tags)
+    cond = (
+        f"EXISTS (SELECT 1 FROM {table} l JOIN prep_tags t ON t.id = l.tag_id"
+        f" WHERE l.{col} = {alias}.id AND t.name = ?)"
+    )
+    return [cond] * len(names), names
 
 
 def _clean_question(prompt: str, notes: str) -> tuple[str, str]:
@@ -123,19 +157,6 @@ def _clean_question(prompt: str, notes: str) -> tuple[str, str]:
     return prompt, (notes or "").replace("\r\n", "\n").strip()
 
 
-def _set_tags(conn, question_id: int, tags: list[str]) -> None:
-    """Replace a question's tags and drop tags no question uses any more. Call inside ``with conn``."""
-    conn.execute("DELETE FROM prep_question_tags WHERE question_id = ?", (question_id,))
-    for name in parse_tags(tags):
-        conn.execute("INSERT OR IGNORE INTO prep_tags (name) VALUES (?)", (name,))
-        conn.execute(
-            "INSERT INTO prep_question_tags (question_id, tag_id)"
-            " SELECT ?, id FROM prep_tags WHERE name = ?",
-            (question_id, name),
-        )
-    conn.execute("DELETE FROM prep_tags WHERE id NOT IN (SELECT tag_id FROM prep_question_tags)")
-
-
 def create_question(conn, prompt: str, notes: str = "", tags: str | list[str] | None = None) -> int:
     prompt, notes = _clean_question(prompt, notes)
     with conn:
@@ -143,7 +164,7 @@ def create_question(conn, prompt: str, notes: str = "", tags: str | list[str] | 
             "INSERT INTO prep_questions (prompt, notes, created_at, updated_at) VALUES (?, ?, ?, ?)",
             (prompt, notes, now(), now()),
         ).lastrowid
-        _set_tags(conn, question_id, parse_tags(tags))
+        _replace_tags(conn, "questions", question_id, parse_tags(tags))
     return question_id
 
 
@@ -154,7 +175,7 @@ def update_question(conn, question_id: int, prompt: str, notes: str = "", tags: 
             "UPDATE prep_questions SET prompt = ?, notes = ?, updated_at = ? WHERE id = ?",
             (prompt, notes, now(), question_id),
         )
-        _set_tags(conn, question_id, parse_tags(tags))
+        _replace_tags(conn, "questions", question_id, parse_tags(tags))
 
 
 def delete_question(conn, question_id: int) -> list[str]:
@@ -169,7 +190,7 @@ def delete_question(conn, question_id: int) -> list[str]:
             )
         ]
         conn.execute("DELETE FROM prep_questions WHERE id = ?", (question_id,))
-        conn.execute("DELETE FROM prep_tags WHERE id NOT IN (SELECT tag_id FROM prep_question_tags)")
+        _drop_unused_tags(conn)
     return stored
 
 
@@ -292,24 +313,34 @@ def delete_answer(conn, answer_id: int) -> str | None:
 # --- concepts ---
 
 _CONCEPT_SELECT = """
-    SELECT c.*, (SELECT count(*) FROM prep_question_concepts qc WHERE qc.concept_id = c.id) AS question_count
+    SELECT c.*,
+        (SELECT count(*) FROM prep_question_concepts qc WHERE qc.concept_id = c.id) AS question_count,
+        (SELECT group_concat(name, ',') FROM (
+            SELECT t.name FROM prep_concept_tags ct JOIN prep_tags t ON t.id = ct.tag_id
+            WHERE ct.concept_id = c.id ORDER BY t.name)) AS tags
     FROM prep_concepts c
 """
 
 
-def _concept_filter(q: str | None) -> tuple[str, list]:
-    if not q:
-        return "", []
-    return " WHERE (c.name LIKE ? OR c.explanation LIKE ? OR c.notes LIKE ?)", [f"%{q}%"] * 3
+def _concept_filter(q: str | None, tags: list[str]) -> tuple[str, list]:
+    where, params = [], []
+    if q:
+        where.append("(c.name LIKE ? OR c.explanation LIKE ? OR c.notes LIKE ?)")
+        params += [f"%{q}%"] * 3
+    conds, names = _tag_filter("concepts", "c", tags)
+    where += conds
+    params += names
+    return (" WHERE " + " AND ".join(where) if where else ""), params
 
 
-def list_concepts(conn, q: str | None = None) -> list[sqlite3.Row]:
-    where, params = _concept_filter(q)
+def list_concepts(conn, q: str | None = None, tags: list[str] | None = None) -> list[sqlite3.Row]:
+    """Concepts matching the search text and *all* of ``tags``."""
+    where, params = _concept_filter(q, tags or [])
     return conn.execute(_CONCEPT_SELECT + where + " ORDER BY c.name COLLATE NOCASE", params).fetchall()
 
 
-def random_concept_id(conn, q: str | None = None) -> int | None:
-    where, params = _concept_filter(q)
+def random_concept_id(conn, q: str | None = None, tags: list[str] | None = None) -> int | None:
+    where, params = _concept_filter(q, tags or [])
     ids = [r[0] for r in conn.execute("SELECT c.id FROM prep_concepts c" + where, params)]
     return random.choice(ids) if ids else None
 
@@ -334,7 +365,9 @@ def _clean_concept(name: str, explanation: str, notes: str) -> tuple[str, str, s
     return name, _tidy(explanation), _tidy(notes)
 
 
-def create_concept(conn, name: str, explanation: str = "", notes: str = "", question_ids=()) -> int:
+def create_concept(
+    conn, name: str, explanation: str = "", notes: str = "", question_ids=(), tags: str | list[str] | None = None,
+) -> int:
     name, explanation, notes = _clean_concept(name, explanation, notes)
     try:
         with conn:
@@ -342,6 +375,7 @@ def create_concept(conn, name: str, explanation: str = "", notes: str = "", ques
                 "INSERT INTO prep_concepts (name, explanation, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                 (name, explanation, notes, now(), now()),
             ).lastrowid
+            _replace_tags(conn, "concepts", concept_id, parse_tags(tags))
             for question_id in question_ids:
                 conn.execute(
                     "INSERT OR IGNORE INTO prep_question_concepts (question_id, concept_id)"
@@ -353,7 +387,10 @@ def create_concept(conn, name: str, explanation: str = "", notes: str = "", ques
     return concept_id
 
 
-def update_concept(conn, concept_id: int, name: str, explanation: str = "", notes: str = "") -> None:
+def update_concept(
+    conn, concept_id: int, name: str, explanation: str = "", notes: str = "", tags: str | list[str] | None = None,
+) -> None:
+    """Update a concept; its tags are replaced by ``tags``, or left as they were when None."""
     name, explanation, notes = _clean_concept(name, explanation, notes)
     try:
         with conn:
@@ -361,6 +398,8 @@ def update_concept(conn, concept_id: int, name: str, explanation: str = "", note
                 "UPDATE prep_concepts SET name = ?, explanation = ?, notes = ?, updated_at = ? WHERE id = ?",
                 (name, explanation, notes, now(), concept_id),
             )
+            if tags is not None:
+                _replace_tags(conn, "concepts", concept_id, parse_tags(tags))
     except sqlite3.IntegrityError:
         raise ValueError(f"there is already a concept called {name}") from None
 
@@ -369,6 +408,13 @@ def delete_concept(conn, concept_id: int) -> None:
     """Delete a concept; the questions it was linked to are kept."""
     with conn:
         conn.execute("DELETE FROM prep_concepts WHERE id = ?", (concept_id,))
+        _drop_unused_tags(conn)
+
+
+def set_concept_tags(conn, concept_id: int, tags: str | list[str] | None) -> None:
+    """Replace a concept's tags, leaving the rest of it as it is."""
+    with conn:
+        _replace_tags(conn, "concepts", concept_id, parse_tags(tags))
 
 
 def link_concept(conn, question_id: int, concept_id: int) -> None:

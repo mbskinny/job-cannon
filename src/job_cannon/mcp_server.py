@@ -147,11 +147,12 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
             }
 
     @server.tool(annotations=READ)
-    def list_prep_concepts(search: str | None = None) -> dict[str, Any]:
+    def list_prep_concepts(search: str | None = None, tags: list[str] | None = None) -> dict[str, Any]:
         """List interview prep concepts (short explanations of tools, methods or ideas the user rehearses),
-        with their explanations. search: matches the name, explanation and notes."""
+        with their explanations and tags. search: matches the name, explanation and notes. tags: only
+        concepts with all of these tags."""
         with opened() as (name, _cfg, conn):
-            rows = prep.list_concepts(conn, q=search or None)
+            rows = prep.list_concepts(conn, q=search or None, tags=tags or [])
             return {"profile": name, "concepts": [agent_data.concept_summary(r) for r in rows]}
 
     @server.tool(annotations=READ)
@@ -166,11 +167,13 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
     @server.tool(annotations=ADD)
     def create_prep_concept(
         name: str, explanation: str, notes: str = "", question_ids: list[int] | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """Add a concept to interview prep: something the user needs to explain quickly (a tool, a method,
         a piece of their field), e.g. name "Benchling Analysis". explanation: the short version to rehearse
         and say from memory, about 30 seconds (~75 words) of plain spoken sentences. notes: optional details
-        to draw on if asked more. question_ids: prep questions where it comes up. If a concept with the same
+        to draw on if asked more. question_ids: prep questions where it comes up. tags: a few short lowercase
+        topics (reuse ones list_prep_concepts shows, e.g. "databases"). If a concept with the same
         name exists, returns it unchanged (existing=true). Ask the user first."""
         with opened() as (profile_name, _cfg, conn):
             for question_id in question_ids or []:
@@ -180,7 +183,9 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
                 concept_id, existing = same["id"], True
             else:
                 try:
-                    concept_id = prep.create_concept(conn, name, explanation, notes, question_ids=question_ids or [])
+                    concept_id = prep.create_concept(
+                        conn, name, explanation, notes, question_ids=question_ids or [], tags=tags or [],
+                    )
                 except ValueError as exc:
                     raise ToolError(str(exc)) from exc
                 existing = False

@@ -112,8 +112,11 @@ def test_prep_concepts(call, conn):
     assert prep.get_concept(conn, made["concept_id"])["explanation"] == "A tool for analysing data."
 
     assert call("list_prep_concepts", search="analysing")["concepts"] == [
-        {"id": made["concept_id"], "name": "Benchling Analysis", "explanation": "A tool for analysing data."}
+        {"id": made["concept_id"], "name": "Benchling Analysis", "explanation": "A tool for analysing data.", "tags": []}
     ]
+    tagged = create(name="Indexes", explanation="Sorted trees.", tags=["Databases", "performance"])
+    assert [c["id"] for c in call("list_prep_concepts", tags=["databases"])["concepts"]] == [tagged["concept_id"]]
+    assert call("get_prep_concept", concept_id=tagged["concept_id"])["tags"] == ["databases", "performance"]
     concept = call("get_prep_concept", concept_id=made["concept_id"])
     assert concept["questions"] == [{"id": q, "prompt": "Tell me about your data work.", "tags": []}]
     assert call("get_prep_question", question_id=q)["concepts"][0]["name"] == "Benchling Analysis"

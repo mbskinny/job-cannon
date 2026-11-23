@@ -9,6 +9,11 @@
   <label>Name *
     <input name="name" value="{{ values.name or '' }}" required {% if not concept %}autofocus{% endif %} placeholder="e.g. Benchling Analysis">
   </label>
+  <label>Tags
+    <input name="tags" id="concept-tags" value="{{ values.tags or '' }}" list="concept-tag-list" placeholder="databases, system-design" autocomplete="off">
+    <small>Separate tags with commas.{% if all_tags %} In use (click to add): <span data-tag-picker="#concept-tags">{% for t in all_tags %}<button type="button" class="tag-pill" data-tag="{{ t.name }}">{{ t.name }}</button> {% endfor %}</span>{% endif %}</small>
+  </label>
+  <datalist id="concept-tag-list">{% for t in all_tags %}<option value="{{ t.name }}">{% endfor %}</datalist>
   <label>Explanation
     <textarea name="explanation" rows="6" placeholder="What it is, what it's for, and how you used it, in a few sentences you could say out loud.">{{ values.explanation or '' }}</textarea>
     <small>The short version you want to say from memory. About 30 seconds (75 words) is plenty.</small>
@@ -27,3 +32,4 @@
 </form>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="/static/tag-picker.js" defer></script>{% endblock %}
