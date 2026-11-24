@@ -7,12 +7,14 @@ from pathlib import Path
 
 from job_cannon.repo import prep
 
-AUDIT = Path(__file__).resolve().parent.parent / ".claude/skills/audit-quiz-questions/scripts/quiz_audit.py"
+SKILLS = Path(__file__).resolve().parent.parent / ".claude/skills"
+AUDIT = SKILLS / "audit-quiz-questions/scripts/quiz_audit.py"
+CONCEPT_AUDIT = SKILLS / "audit-concepts/scripts/concept_audit.py"
 
 
-def run(cfg, *args, ok=True):
+def run(cfg, *args, ok=True, script=AUDIT):
     result = subprocess.run(
-        [sys.executable, str(AUDIT), "--data-dir", str(cfg.data_dir), *map(str, args)],
+        [sys.executable, str(script), "--data-dir", str(cfg.data_dir), *map(str, args)],
         capture_output=True, text=True,
     )
     assert (result.returncode == 0) == ok, result.stderr
@@ -41,7 +43,7 @@ def test_quiz_audit_script(cfg, conn, tmp_path):
     run(cfg, "mark", q2)
     assert json.loads(run(cfg, "list").stdout)["due"] == 0
     assert json.loads(run(cfg, "list", "--all").stdout)["due"] == 2
-    assert json.loads(run(cfg, "list", "--older-than", "0").stdout)["due"] == 0
+    assert json.loads(run(cfg, "list", "--older-than", "1").stdout)["due"] == 0
     assert json.loads(run(cfg, "list", "--tag", "ai", "--all").stdout)["due"] == 0
 
     concept_fix = tmp_path / "concept.json"
@@ -49,6 +51,7 @@ def test_quiz_audit_script(cfg, conn, tmp_path):
     run(cfg, "fix-concept", k, concept_fix, "--no-backup")
     concept = prep.get_concept(conn, k)
     assert (concept["explanation"], concept["notes"], concept["tags"]) == ("Log first.", "Better notes.", "databases")
+    assert concept["checked_at"]
 
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"wrong_answers": ["x", "y"]}))
@@ -56,3 +59,34 @@ def test_quiz_audit_script(cfg, conn, tmp_path):
     bad.write_text(json.dumps({"answr": "typo"}))
     assert "unknown field" in run(cfg, "fix", q1, bad, "--no-backup", ok=False).stderr
     assert "no quiz question" in run(cfg, "mark", 999, ok=False).stderr
+
+
+def test_concept_audit_script(cfg, conn, tmp_path):
+    run_c = lambda *a, ok=True: run(cfg, *a, ok=ok, script=CONCEPT_AUDIT)
+    q = prep.create_question(conn, "How does Postgres stay consistent?")
+    wal = prep.create_concept(conn, "WAL", "Log first.", "- notes", question_ids=[q], tags="databases")
+    rag = prep.create_concept(conn, "RAG", "Retrieve, then generate.", tags="ai")
+    z = prep.create_quiz_question(conn, wal, "When does COMMIT return?", "After the flush", ["a", "b", "c"])
+
+    out = json.loads(run_c("list").stdout)
+    assert (out["due"], out["total"]) == (2, 2)
+    by_name = {c["name"]: c for c in out["concepts"]}
+    assert by_name["WAL"]["interview_questions"] == ["How does Postgres stay consistent?"]
+    assert by_name["WAL"]["quiz_questions"] == [{"id": z, "prompt": "When does COMMIT return?", "answer": "After the flush"}]
+    assert by_name["WAL"]["notes"] == "- notes" and by_name["RAG"]["checked_at"] is None
+    assert [c["name"] for c in json.loads(run_c("list", "--tag", "ai").stdout)["concepts"]] == ["RAG"]
+    assert [c["name"] for c in json.loads(run_c("list", "--concept", wal).stdout)["concepts"]] == ["WAL"]
+
+    changes = tmp_path / "fix.json"
+    changes.write_text(json.dumps({"explanation": "Log first, flush on commit."}))
+    run_c("fix", wal, changes, "--no-backup")
+    concept = prep.get_concept(conn, wal)
+    assert (concept["explanation"], concept["notes"], concept["tags"]) == ("Log first, flush on commit.", "- notes", "databases")
+    assert concept["checked_at"]
+
+    run_c("mark", rag)
+    assert json.loads(run_c("list").stdout)["due"] == 0
+    assert json.loads(run_c("list", "--all").stdout)["due"] == 2
+    changes.write_text(json.dumps({"name": "x"}))
+    assert "unknown field" in run_c("fix", wal, changes, "--no-backup", ok=False).stderr
+    assert "no concept" in run_c("mark", 999, ok=False).stderr

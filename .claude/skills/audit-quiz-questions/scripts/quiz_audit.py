@@ -14,8 +14,8 @@ fix applies changes.json to one quiz question: any of prompt, answer,
 wrong_answers (exactly 3), explanation, code, concept_id. Fields left out are kept;
 the results (right/wrong counts) always are. The question is then marked checked.
 
-fix-concept applies changes.json (explanation and/or notes) to a concept; its name
-and tags are kept.
+fix-concept applies changes.json (explanation and/or notes) to a concept, keeping its
+name and tags, and marks the concept checked (as the audit-concepts skill does).
 
 mark records that the given quiz questions were checked and found correct.
 
@@ -107,7 +107,9 @@ def main() -> int:
             "profile": profile.name,
             "due": len(rows),
             "total": len(prep.list_quiz_questions(conn)),
-            "concepts": [{**agent_data.concept_summary(c), "notes": c["notes"]} for c in concepts],
+            "concepts": [
+                {**agent_data.concept_summary(c), "notes": c["notes"], "checked_at": c["checked_at"]} for c in concepts
+            ],
             "questions": [agent_data.quiz_question_dict(r) for r in rows],
         }
         print(json.dumps(out, indent=2, ensure_ascii=False))
@@ -164,7 +166,8 @@ def main() -> int:
         conn, args.id, concept["name"], changes.get("explanation", concept["explanation"]),
         changes.get("notes", concept["notes"]),
     )
-    print(f"updated concept {args.id} ({concept['name']}) in profile {profile.name}: {', '.join(sorted(changes))}")
+    prep.mark_concepts_checked(conn, [args.id])
+    print(f"updated concept {args.id} ({concept['name']}) in profile {profile.name}: {', '.join(sorted(changes))}; marked it checked")
     print(f"http://127.0.0.1:8765/prep/concepts/{args.id}")
     return 0
 

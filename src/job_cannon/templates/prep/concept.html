@@ -35,7 +35,8 @@
         </div>
         <p class="answer-body concept-body">{{ concept.explanation }}</p>
       </div>
-      <small class="muted">{{ words }} words · <span title="Estimated at 150 words per minute">~{{ spoken // 60 }}:{{ '%02d'|format(spoken % 60) }} to say</span>{% if words > 120 %} · a shorter version is easier to say from memory{% endif %}</small>
+      <small class="muted">{{ words }} words · <span title="Estimated at 150 words per minute">~{{ spoken // 60 }}:{{ '%02d'|format(spoken % 60) }} to say</span>{% if words > 120 %} · a shorter version is easier to say from memory{% endif %}
+        · {% if concept.checked_at %}checked for accuracy {{ concept.checked_at[:10] }}{% else %}not checked for accuracy yet{% endif %}</small>
       {% else %}
       <p class="muted">No explanation yet. <a href="{{ here }}/edit">Write the short version</a> you want to say from memory.</p>
       {% endif %}

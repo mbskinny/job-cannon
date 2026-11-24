@@ -26,7 +26,7 @@ This is **read-only**. By default it lists the quiz questions **never checked**.
 
 It prints JSON with:
 - `due` and `total`;
-- `concepts`: each concept the listed questions test, with `explanation` and `notes`;
+- `concepts`: each concept the listed questions test, with `explanation`, `notes` and `checked_at`;
 - `questions`: each with `id`, `concept`, `prompt`, `code`, `answer`, `wrong_answers`, `explanation` and `checked_at`.
 
 If nothing is due, say so with the total, suggest `older-than 90` or `all`, and stop.
@@ -43,7 +43,11 @@ For every question, decide:
 4. **Is the prompt sound?** No hidden assumption the options depend on. No "always/never" that's false in practice. Code that does what the question says.
 5. **Is it current?** Facts tied to versions or defaults may have changed. Flag the ones that have, with the version where they changed.
 
-Also check each listed **concept's** `explanation` and `notes`. The user says these aloud from memory, so the same standard applies.
+Also look at each listed **concept** (`explanation`, `notes`, `checked_at`):
+- If its `checked_at` is empty, check it to the same standard. The user says the explanation aloud from memory.
+- If it's already been checked, only make sure the quiz questions agree with it.
+
+The audit-concepts skill covers every concept, including those with no quiz questions. Suggest it if the user wants concepts checked on their own.
 
 **Verify, don't assume.** For anything version-specific, numeric, or that you aren't certain of, check a primary source: official docs, release notes, the spec, or the source code. Use WebSearch or WebFetch, and keep the URL for the report. Your own memory is fine for settled fundamentals. Don't present a guess as a finding: if you can't confirm something, report it as **unverified** rather than wrong.
 
@@ -78,7 +82,7 @@ Nothing changes until the user says so. They may accept all of the fixes, some, 
   uv run python .claude/skills/audit-quiz-questions/scripts/quiz_audit.py fix <ID> <file.json>
   ```
   It backs up the profile first, keeps the user's right/wrong results, and marks the question checked.
-- **Fix a concept:** a JSON file with `explanation` and/or `notes`, then:
+- **Fix a concept:** a JSON file with `explanation` and/or `notes` (notes replace the whole field), then the command below. It marks the concept checked too.
   ```sh
   uv run python .claude/skills/audit-quiz-questions/scripts/quiz_audit.py fix-concept <ID> <file.json>
   ```

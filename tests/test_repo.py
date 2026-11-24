@@ -561,3 +561,19 @@ def test_quiz_checked_for_accuracy(conn):
     assert due() == [b]
     prep.update_quiz_question(conn, a, k, "A, reworded?", "Right", ["W1", "W2", "W3"])
     assert due() == [a, b]
+
+
+def test_concepts_checked_for_accuracy(conn):
+    from job_cannon.repo import prep
+    a = prep.create_concept(conn, "A", "Explained.", "Notes.", tags="x")
+    b = prep.create_concept(conn, "B")
+    due = lambda before="": [r["id"] for r in prep.list_concepts(conn, checked_before=before)]
+    assert due() == [a, b]
+    prep.mark_concepts_checked(conn, [a])
+    assert due() == [b] and due("9999") == [a, b]
+    # Tags and a no-op save keep the check; changing the text clears it.
+    prep.update_concept(conn, a, "A", "Explained.", "Notes.", tags="x, y")
+    prep.set_concept_tags(conn, a, "z")
+    assert due() == [b]
+    prep.update_concept(conn, a, "A", "Explained better.", "Notes.")
+    assert due() == [a, b]

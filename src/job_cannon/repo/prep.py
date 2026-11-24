@@ -322,8 +322,11 @@ _CONCEPT_SELECT = """
 """
 
 
-def _concept_filter(q: str | None, tags: list[str]) -> tuple[str, list]:
+def _concept_filter(q: str | None, tags: list[str], checked_before: str | None = None) -> tuple[str, list]:
     where, params = [], []
+    if checked_before is not None:
+        where.append("(c.checked_at IS NULL OR c.checked_at < ?)")
+        params.append(checked_before)
     if q:
         where.append("(c.name LIKE ? OR c.explanation LIKE ? OR c.notes LIKE ?)")
         params += [f"%{q}%"] * 3
@@ -333,9 +336,12 @@ def _concept_filter(q: str | None, tags: list[str]) -> tuple[str, list]:
     return (" WHERE " + " AND ".join(where) if where else ""), params
 
 
-def list_concepts(conn, q: str | None = None, tags: list[str] | None = None) -> list[sqlite3.Row]:
-    """Concepts matching the search text and *all* of ``tags``."""
-    where, params = _concept_filter(q, tags or [])
+def list_concepts(
+    conn, q: str | None = None, tags: list[str] | None = None, checked_before: str | None = None,
+) -> list[sqlite3.Row]:
+    """Concepts matching the search text and *all* of ``tags``. ``checked_before`` (an ISO time)
+    keeps the ones due for an accuracy check: never checked, or checked before then."""
+    where, params = _concept_filter(q, tags or [], checked_before)
     return conn.execute(_CONCEPT_SELECT + where + " ORDER BY c.name COLLATE NOCASE", params).fetchall()
 
 
@@ -390,14 +396,23 @@ def create_concept(
 def update_concept(
     conn, concept_id: int, name: str, explanation: str = "", notes: str = "", tags: str | list[str] | None = None,
 ) -> None:
-    """Update a concept; its tags are replaced by ``tags``, or left as they were when None."""
+    """Update a concept; its tags are replaced by ``tags``, or left as they were when None.
+
+    Changing the name, explanation or notes clears ``checked_at``: the text needs checking again.
+    """
     name, explanation, notes = _clean_concept(name, explanation, notes)
+    old = get_concept(conn, concept_id)
+    changed = old is None or (old["name"], old["explanation"], old["notes"]) != (name, explanation, notes)
     try:
         with conn:
-            conn.execute(
-                "UPDATE prep_concepts SET name = ?, explanation = ?, notes = ?, updated_at = ? WHERE id = ?",
-                (name, explanation, notes, now(), concept_id),
-            )
+            if changed:
+                conn.execute(
+                    "UPDATE prep_concepts SET name = ?, explanation = ?, notes = ?, checked_at = NULL, updated_at = ?"
+                    " WHERE id = ?",
+                    (name, explanation, notes, now(), concept_id),
+                )
+            else:
+                conn.execute("UPDATE prep_concepts SET updated_at = ? WHERE id = ?", (now(), concept_id))
             if tags is not None:
                 _replace_tags(conn, "concepts", concept_id, parse_tags(tags))
     except sqlite3.IntegrityError:
@@ -409,6 +424,14 @@ def delete_concept(conn, concept_id: int) -> None:
     with conn:
         conn.execute("DELETE FROM prep_concepts WHERE id = ?", (concept_id,))
         _drop_unused_tags(conn)
+
+
+def mark_concepts_checked(conn, concept_ids) -> None:
+    """Record that these concepts' explanations and notes were just checked for accuracy."""
+    with conn:
+        conn.executemany(
+            "UPDATE prep_concepts SET checked_at = ? WHERE id = ?", [(now(), int(i)) for i in concept_ids]
+        )
 
 
 def set_concept_tags(conn, concept_id: int, tags: str | list[str] | None) -> None:
