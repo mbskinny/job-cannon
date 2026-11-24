@@ -30,7 +30,7 @@ def test_tools_listed_with_read_only_hints(call):
     assert set(tools) == {
         "list_applications", "get_application", "list_prep_questions", "get_prep_question",
         "save_prep_answer", "create_prep_question", "list_prep_concepts", "get_prep_concept", "create_prep_concept",
-        "list_experience_notes", "create_experience_note",
+        "list_experience_notes", "create_experience_note", "list_quiz_questions", "create_quiz_question",
     }
     assert tools["get_prep_question"].annotations.read_only_hint is True
     assert tools["save_prep_answer"].annotations.read_only_hint is False
@@ -145,3 +145,24 @@ def test_profile_resolved_on_each_call(call, cfg):
     profiles.set_active(cfg.data_dir, other.id)
     with pytest.raises(ToolError, match="no Job Cannon database"):
         asyncio.run(call.server.call_tool("list_prep_questions", {}))
+
+
+def test_quiz_questions(call, conn):
+    k = prep.create_concept(conn, "WAL", "Log first.", tags="databases")
+    out = call("create_quiz_question", concept_id=k, prompt="When does COMMIT return?", answer="After the WAL flush",
+               wrong_answers=["After pages are written", "Immediately", "After replicas confirm"], explanation="Durability.")
+    assert out["existing"] is False and out["url"].endswith(f"/prep/quiz?concept={k}")
+    again = call("create_quiz_question", concept_id=k, prompt="when does  COMMIT return?", answer="x",
+                 wrong_answers=["a", "b", "c"], explanation="")
+    assert again["existing"] is True and again["quiz_question_id"] == out["quiz_question_id"]
+
+    listed = call("list_quiz_questions", tags=["databases"])["quiz_questions"]
+    assert [(q["concept"], q["answer"], len(q["wrong_answers"]), q["last_correct"]) for q in listed] == [
+        ("WAL", "After the WAL flush", 3, None)]
+    assert call("list_quiz_questions", tags=["ai"])["quiz_questions"] == []
+    assert call("get_prep_concept", concept_id=k)["quiz_question_count"] == 1
+
+    for bad in [dict(concept_id=999), dict(wrong_answers=["a", "b"])]:
+        args = dict(concept_id=k, prompt="New?", answer="Yes", wrong_answers=["a", "b", "c"], explanation="") | bad
+        with pytest.raises(ToolError):
+            asyncio.run(call.server.call_tool("create_quiz_question", args))

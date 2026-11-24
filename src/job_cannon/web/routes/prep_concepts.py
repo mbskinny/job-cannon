@@ -77,6 +77,7 @@ async def detail(request: Request, concept_id: int):
         request, "prep/concept.html", concept=concept, questions=linked, tags=prep.parse_tags(concept["tags"]),
         other_questions=[q for q in prep.list_questions(c) if q["id"] not in linked_ids],
         test=request.query_params.get("test") == "1",
+        quiz=prep.list_quiz_questions(c, concept_id=concept_id), quiz_stats=prep.quiz_stats(c, concept_id),
     )
 
 

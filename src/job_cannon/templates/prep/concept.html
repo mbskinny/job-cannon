@@ -72,6 +72,24 @@
       </form>
       {% endif %}
     </article>
+
+    <article id="quiz">
+      <header><h2>Quiz</h2></header>
+      {% if quiz %}
+      <p class="muted">{{ quiz|length }} question{{ '' if quiz|length == 1 else 's' }}
+        {%- if quiz_stats.total_answers %} · right {{ quiz_stats.right_answers }} of {{ quiz_stats.total_answers }} times ({{ (100 * quiz_stats.right_answers / quiz_stats.total_answers)|round|int }}%){% else %} · not tried yet{% endif %}</p>
+      <ul class="concept-links quiz-list">
+        {% for z in quiz %}
+        <li><a href="/prep/quiz/{{ z.id }}/edit?next={{ (here ~ '#quiz')|urlencode }}">{{ z.prompt|truncate(110) }}</a>
+          <small class="muted">{% if z.last_answered_at %}{{ z.right_count }}/{{ z.right_count + z.wrong_count }} right{% if z.last_correct == 0 %} · missed last time{% endif %}{% else %}new{% endif %}</small></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">No quiz questions yet.</p>{% endif %}
+      <div class="head-actions">
+        {% if quiz %}<a href="/prep/quiz?concept={{ concept.id }}" role="button" class="secondary">Quiz me on this</a>{% endif %}
+        <a href="/prep/quiz/new?concept={{ concept.id }}" role="button" class="secondary outline">+ Add quiz question</a>
+      </div>
+    </article>
   </div>
 </div>
 {% endblock %}

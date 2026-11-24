@@ -96,9 +96,21 @@ def concept_summary(row: sqlite3.Row) -> dict:
 
 
 def concept_with_questions(conn, row: sqlite3.Row) -> dict:
-    """A prep concept with its notes and the questions it's linked to."""
+    """A prep concept with its notes, the questions it's linked to, and how many quiz questions test it."""
     return {
         **concept_summary(row),
         "notes": row["notes"],
         "questions": [question_summary(q) for q in prep.questions_for_concept(conn, row["id"])],
+        "quiz_question_count": prep.quiz_stats(conn, row["id"])["questions"],
+    }
+
+
+def quiz_question_dict(row: sqlite3.Row) -> dict:
+    """A quiz question with its answers and the user's results so far."""
+    return {
+        "id": row["id"], "concept_id": row["concept_id"], "concept": row["concept_name"],
+        "prompt": row["prompt"], "code": row["code"], "answer": row["answer"],
+        "wrong_answers": prep.quiz_wrong_answers(row), "explanation": row["explanation"],
+        "right_count": row["right_count"], "wrong_count": row["wrong_count"],
+        "last_correct": None if row["last_correct"] is None else bool(row["last_correct"]),
     }

@@ -394,6 +394,49 @@ button.tag-pill[aria-pressed=true] { color: var(--jc-muted); text-decoration: no
 .concept-links .answer-body { margin: 0.3rem 0; }
 button.link.star { font-size: 1.1rem; line-height: 1; color: var(--jc-brass-text); }
 
+/* Interview prep quiz (static/prep-quiz.js): one question card at a time. Right and wrong
+   reuse the offer and rejected colours, tinted onto the card so they work in both themes. */
+.quiz-filters { display: grid; gap: 0.9rem; margin-bottom: 0.9rem; }
+.quiz-filters .tag-filter { margin: 0; }
+.quiz-focus { margin: 0; font-size: 0.95rem; }
+.quiz-focus small { display: inline; margin: 0 0 0 0.3rem; }
+.quiz-scope { margin: 0; }
+.quiz-card { display: grid; gap: 1rem; }
+.quiz-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--jc-ink-soft); }
+.quiz-meta a { color: var(--jc-brass-text); text-decoration: none; }
+.quiz-meta a:hover { text-decoration: underline; }
+.quiz-bar { height: 4px; background: var(--jc-sunken); border-radius: 2px; overflow: hidden; }
+.quiz-bar i { display: block; height: 100%; width: 0; background: var(--jc-brass); transition: width 0.25s; }
+.quiz-prompt { margin: 0; font-size: 1.35rem; line-height: 1.3; text-wrap: balance; }
+.quiz-code { margin: 0; padding: 0.7rem 0.9rem; overflow-x: auto; font-size: 0.85rem; }
+.quiz-code-input { font-family: var(--pico-font-family-monospace); font-size: 0.85rem; }
+.quiz-options { display: grid; gap: 0.5rem; }
+.quiz-option { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1.7rem 1fr; gap: 0.6rem; align-items: start; padding: 0.65rem 0.8rem; cursor: pointer;
+  border: 1px solid var(--jc-rule); border-radius: var(--pico-border-radius); background: var(--jc-paper); color: var(--jc-ink); line-height: 1.45; }
+.quiz-option:hover:not(:disabled) { border-color: var(--jc-brass); }
+.quiz-option:focus-visible { outline: 2px solid var(--pico-primary-focus); outline-offset: 2px; }
+.quiz-option:disabled { cursor: default; }
+.quiz-key { width: 1.6rem; height: 1.6rem; border-radius: 50%; text-align: center; font-size: 0.85rem; font-weight: 700; line-height: 1.6rem; background: var(--jc-sunken); color: var(--jc-ink-soft); }
+.quiz-option.right { border-color: var(--jc-offer); background: color-mix(in srgb, var(--jc-offer) 14%, var(--jc-card)); }
+.quiz-option.right .quiz-key { background: var(--jc-offer); color: var(--jc-card); }
+.quiz-option.wrong { border-color: var(--jc-rejected); background: color-mix(in srgb, var(--jc-rejected) 14%, var(--jc-card)); }
+.quiz-option.wrong .quiz-key { background: var(--jc-rejected); color: var(--jc-card); }
+.quiz-option.dim { opacity: 0.6; }
+.quiz-why { display: grid; gap: 0.35rem; padding: 0.15rem 0 0.15rem 0.9rem; border-left: 3px solid var(--jc-brass); }
+.quiz-why p { margin: 0; }
+.quiz-ok { color: var(--jc-offer); }
+.quiz-no { color: var(--jc-rejected); }
+.quiz-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+.quiz-actions button { margin: 0; width: auto; }
+.quiz-score { margin: 0; font-size: 2.4rem; font-variant-numeric: tabular-nums; }
+.quiz-missed { display: grid; gap: 0.6rem; margin: 0; padding: 0; }
+.quiz-missed li { list-style: none; display: grid; gap: 0.15rem; padding-top: 0.6rem; border-top: 1px solid var(--jc-rule); }
+.quiz-missed-q { font-weight: 600; }
+.quiz-count { font-variant-numeric: tabular-nums; }
+.quiz-list small { margin-left: 0.4rem; }
+@media (prefers-reduced-motion: reduce) { .quiz-bar i { transition: none; } }
+@media (max-width: 480px) { .quiz-hint { display: none; } .quiz-prompt { font-size: 1.2rem; } }
+
 /* Easter egg: the cannon duel (static/cannon-game.js), opened by double-clicking the logo. */
 .cannon-game > article { width: 100%; max-width: 860px; }
 .cannon-game canvas { display: block; width: 100%; height: auto; border: 1px solid var(--jc-rule); border-radius: var(--pico-border-radius); }

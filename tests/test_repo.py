@@ -486,3 +486,63 @@ def test_default_cover_letter(conn):
     cover_letters.set_default(conn, a)
     cover_letters.delete_template(conn, a)
     assert not any(t["is_default"] for t in cover_letters.list_templates(conn))
+
+
+def _quiz(conn, concept_id, prompt="Q?", answer="Right", wrong=("W1", "W2", "W3"), **kw):
+    from job_cannon.repo import prep
+    return prep.create_quiz_question(conn, concept_id, prompt, answer, list(wrong), **kw)
+
+
+def test_quiz_questions_validation(conn):
+    from job_cannon.repo import prep
+    k = prep.create_concept(conn, "Caching")
+    q = _quiz(conn, k, prompt="  What is cache-aside? ", code="get(k)\n  miss()  \n\n", explanation=" Load on miss. ")
+    row = prep.get_quiz_question(conn, q)
+    assert (row["prompt"], row["code"], row["explanation"], row["concept_name"]) == (
+        "What is cache-aside?", "get(k)\n  miss()", "Load on miss.", "Caching")
+    assert prep.quiz_wrong_answers(row) == ["W1", "W2", "W3"]
+    for args, message in [
+        (dict(prompt=" "), "question"), (dict(answer=""), "correct answer"),
+        (dict(wrong=("a", "b")), "3 wrong"), (dict(wrong=("a", " ", "c")), "3 wrong"),
+        (dict(wrong=("right", "b", "c")), "different"), (dict(wrong=("a", "A", "c")), "different"),
+    ]:
+        with pytest.raises(ValueError, match=message):
+            _quiz(conn, k, **args)
+    with pytest.raises(ValueError, match="concept"):
+        _quiz(conn, 999)
+    with pytest.raises(ValueError, match="concept"):
+        _quiz(conn, "")
+    assert prep.find_quiz_question(conn, k, "what is  CACHE-aside?")["id"] == q
+    prep.update_quiz_question(conn, q, k, "Changed?", "New", ["a", "b", "c"])
+    assert prep.get_quiz_question(conn, q)["answer"] == "New"
+
+
+def test_quiz_filters_focus_results_and_cascade(conn):
+    from job_cannon.repo import prep
+    db_k = prep.create_concept(conn, "Indexes", tags="databases, performance")
+    ai_k = prep.create_concept(conn, "RAG", tags="ai")
+    a, b, c = _quiz(conn, db_k, "A?"), _quiz(conn, db_k, "B?"), _quiz(conn, ai_k, "C?")
+    ids = lambda **kw: [r["id"] for r in prep.list_quiz_questions(conn, **kw)]
+    assert ids() == [a, b, c]
+    assert ids(tags=["databases", "performance"]) == [a, b] and ids(tags=["databases", "ai"]) == []
+    assert ids(concept_id=ai_k) == [c]
+    assert [(t["name"], t["n"]) for t in prep.quiz_tags(conn)] == [("ai", 1), ("databases", 2), ("performance", 2)]
+
+    # Focus: new ones, last answered wrong, or right under 70% of the time.
+    assert ids(focus=True) == [a, b, c]
+    for _ in range(3):
+        prep.record_quiz_answer(conn, a, True)
+    prep.record_quiz_answer(conn, b, True)
+    prep.record_quiz_answer(conn, b, False)
+    for correct in (False, True):
+        prep.record_quiz_answer(conn, c, correct)  # 1 of 2 right: under 70%, though right last time
+    assert ids(focus=True) == [b, c]
+    row = prep.get_quiz_question(conn, a)
+    assert (row["right_count"], row["wrong_count"], row["last_correct"]) == (3, 0, 1) and row["last_answered_at"]
+    stats = prep.quiz_stats(conn, db_k)
+    assert tuple(stats) == (2, 2, 4, 5)
+
+    prep.delete_quiz_question(conn, b)
+    prep.delete_concept(conn, db_k)
+    assert ids() == [c]
+

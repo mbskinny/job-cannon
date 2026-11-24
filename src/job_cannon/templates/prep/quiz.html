@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Quiz · Interview prep{% endblock %}
+{% block content %}
+<div class="page-head">
+  <hgroup>
+    <h1>Interview prep</h1>
+    <p>Quiz: multiple-choice questions on your concepts. Wrong answers come back in focus mode until you get them right.</p>
+  </hgroup>
+  <a href="/prep/quiz/new{% if concept %}?concept={{ concept.id }}{% endif %}" role="button">+ New quiz question</a>
+</div>
+{% with tab = 'quiz' %}{% include "prep/_tabs.html" %}{% endwith %}
+{% if total %}
+<form class="filters prep-filters quiz-filters" action="/prep/quiz" data-quiz-filters>
+  {% if concept %}
+  <input type="hidden" name="concept" value="{{ concept.id }}">
+  <p class="quiz-scope">Only <a href="/prep/concepts/{{ concept.id }}">{{ concept.name }}</a> · <a href="/prep/quiz">all concepts</a></p>
+  {% elif all_tags %}
+  <fieldset class="tag-filter" aria-label="Filter by topic">
+    {% for t in all_tags %}
+    <label class="tag-chip"><input type="checkbox" name="tag" value="{{ t.name }}" {% if t.name in selected_tags %}checked{% endif %}> {{ t.name }} <small>{{ t.n }}</small></label>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+  <label class="quiz-focus"><input type="checkbox" name="focus" value="1" role="switch" {% if focus %}checked{% endif %}>
+    Focus on what I miss <small class="muted">(new, last answered wrong, or under {{ (QUIZ_FOCUS_BELOW * 100)|int }}% right)</small></label>
+  <noscript><button>Filter</button></noscript>
+</form>
+{% if deck %}
+<script type="application/json" id="quiz-data">{{ deck|tojson }}</script>
+<article class="quiz-card" id="quiz" aria-live="polite">
+  <p class="muted">Loading the quiz…</p>
+  <noscript><p>The quiz needs JavaScript.</p></noscript>
+</article>
+<p class="muted quiz-count">{{ deck|length }} question{{ '' if deck|length == 1 else 's' }}{% if focus %} to focus on, of {{ matching }}{% endif %} · <span data-quiz-score>0 correct · 0 answered</span></p>
+{% elif focus and matching %}
+<article><p>Nothing to focus on: you got all {{ matching }} of these right last time, and at least {{ (QUIZ_FOCUS_BELOW * 100)|int }}% of the time.
+  <a href="/prep/quiz?{% for t in selected_tags %}tag={{ t|urlencode }}&amp;{% endfor %}{% if concept %}concept={{ concept.id }}{% endif %}">Quiz me on all of them</a>.</p></article>
+{% else %}
+<article><p>No quiz questions match. Untick a topic, or <a href="/prep/quiz">show every topic</a>.</p></article>
+{% endif %}
+{% else %}
+<article>
+  <p>No quiz questions yet. A quiz question tests one concept: a question, the correct answer and three
+    plausible wrong ones, plus a short explanation you'll see after answering. Add them from a concept's
+    page, or ask Claude to write some for your concepts.</p>
+  <a href="/prep/quiz/new" role="button">Add a quiz question</a>
+</article>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="/static/prep-quiz.js" defer></script>{% endblock %}

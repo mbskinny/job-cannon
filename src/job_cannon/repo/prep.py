@@ -448,6 +448,144 @@ def questions_for_concept(conn, concept_id: int) -> list[sqlite3.Row]:
     ).fetchall()
 
 
+# --- quiz questions ---
+
+_QUIZ_SELECT = """
+    SELECT z.*, c.name AS concept_name FROM prep_quiz_questions z
+    JOIN prep_concepts c ON c.id = z.concept_id
+"""
+QUIZ_WRONG_ANSWERS = 3
+# Focus mode keeps questions answered less often right than this.
+QUIZ_FOCUS_BELOW = 0.7
+
+
+def list_quiz_questions(
+    conn, tags: list[str] | None = None, concept_id: int | None = None, focus: bool = False,
+) -> list[sqlite3.Row]:
+    """Quiz questions whose concept has *all* of ``tags`` (and is ``concept_id``, if given).
+
+    ``focus`` keeps the ones worth practising: never answered, last answered wrong,
+    or right less than ``QUIZ_FOCUS_BELOW`` of the time.
+    """
+    where, params = _tag_filter("concepts", "c", tags or [])
+    if concept_id is not None:
+        where.append("z.concept_id = ?")
+        params.append(concept_id)
+    if focus:
+        where.append(
+            "(z.last_correct IS NULL OR z.last_correct = 0"
+            " OR z.right_count < ? * (z.right_count + z.wrong_count))"
+        )
+        params.append(QUIZ_FOCUS_BELOW)
+    sql = _QUIZ_SELECT + (" WHERE " + " AND ".join(where) if where else "")
+    return conn.execute(sql + " ORDER BY c.name COLLATE NOCASE, z.id", params).fetchall()
+
+
+def get_quiz_question(conn, question_id: int) -> sqlite3.Row | None:
+    return conn.execute(_QUIZ_SELECT + " WHERE z.id = ?", (question_id,)).fetchone()
+
+
+def find_quiz_question(conn, concept_id: int, prompt: str) -> sqlite3.Row | None:
+    """The concept's quiz question with this wording, ignoring case and extra spaces."""
+    wording = " ".join((prompt or "").split()).casefold()
+    for row in list_quiz_questions(conn, concept_id=concept_id):
+        if " ".join(row["prompt"].split()).casefold() == wording:
+            return row
+    return None
+
+
+def quiz_wrong_answers(row: sqlite3.Row) -> list[str]:
+    return [row[f"wrong_{i}"] for i in range(1, QUIZ_WRONG_ANSWERS + 1)]
+
+
+def _clean_quiz(conn, concept_id, prompt, answer, wrong_answers, explanation, code) -> tuple:
+    try:
+        concept_id = int(concept_id)
+    except (TypeError, ValueError):
+        raise ValueError("choose a concept") from None
+    if get_concept(conn, concept_id) is None:
+        raise ValueError("choose a concept")
+    prompt, answer = _tidy(prompt), _tidy(answer)
+    if not prompt:
+        raise ValueError("a question is required")
+    if not answer:
+        raise ValueError("the correct answer is required")
+    wrong = [_tidy(w) for w in (wrong_answers or [])]
+    if len(wrong) != QUIZ_WRONG_ANSWERS or not all(wrong):
+        raise ValueError(f"give {QUIZ_WRONG_ANSWERS} wrong answers")
+    if len({a.casefold() for a in [answer, *wrong]}) != QUIZ_WRONG_ANSWERS + 1:
+        raise ValueError("the four answers must all be different")
+    # Code keeps its indentation; only trailing blank space goes.
+    code = (code or "").replace("\r\n", "\n").rstrip()
+    return concept_id, prompt, answer, wrong, _tidy(explanation), code
+
+
+def create_quiz_question(
+    conn, concept_id: int, prompt: str, answer: str, wrong_answers: list[str], explanation: str = "", code: str = "",
+) -> int:
+    concept_id, prompt, answer, wrong, explanation, code = _clean_quiz(
+        conn, concept_id, prompt, answer, wrong_answers, explanation, code,
+    )
+    with conn:
+        return conn.execute(
+            "INSERT INTO prep_quiz_questions (concept_id, prompt, code, answer, wrong_1, wrong_2, wrong_3,"
+            " explanation, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (concept_id, prompt, code, answer, *wrong, explanation, now(), now()),
+        ).lastrowid
+
+
+def update_quiz_question(
+    conn, question_id: int, concept_id: int, prompt: str, answer: str, wrong_answers: list[str],
+    explanation: str = "", code: str = "",
+) -> None:
+    """Change a quiz question's wording; its results are kept."""
+    concept_id, prompt, answer, wrong, explanation, code = _clean_quiz(
+        conn, concept_id, prompt, answer, wrong_answers, explanation, code,
+    )
+    with conn:
+        conn.execute(
+            "UPDATE prep_quiz_questions SET concept_id = ?, prompt = ?, code = ?, answer = ?, wrong_1 = ?,"
+            " wrong_2 = ?, wrong_3 = ?, explanation = ?, updated_at = ? WHERE id = ?",
+            (concept_id, prompt, code, answer, *wrong, explanation, now(), question_id),
+        )
+
+
+def delete_quiz_question(conn, question_id: int) -> None:
+    with conn:
+        conn.execute("DELETE FROM prep_quiz_questions WHERE id = ?", (question_id,))
+
+
+def record_quiz_answer(conn, question_id: int, correct: bool) -> None:
+    column = "right_count" if correct else "wrong_count"
+    with conn:
+        conn.execute(
+            f"UPDATE prep_quiz_questions SET {column} = {column} + 1, last_correct = ?, last_answered_at = ?"
+            " WHERE id = ?",
+            (int(bool(correct)), now(), question_id),
+        )
+
+
+def quiz_stats(conn, concept_id: int) -> sqlite3.Row:
+    """A concept's quiz: how many questions, how many answered, and right/total answers."""
+    return conn.execute(
+        "SELECT count(*) AS questions, count(last_answered_at) AS answered,"
+        " coalesce(sum(right_count), 0) AS right_answers,"
+        " coalesce(sum(right_count + wrong_count), 0) AS total_answers"
+        " FROM prep_quiz_questions WHERE concept_id = ?",
+        (concept_id,),
+    ).fetchone()
+
+
+def quiz_tags(conn) -> list[sqlite3.Row]:
+    """Concept tags in use by concepts that have quiz questions, with how many questions each covers."""
+    return conn.execute(
+        "SELECT t.name, count(z.id) AS n FROM prep_tags t"
+        " JOIN prep_concept_tags ct ON ct.tag_id = t.id"
+        " JOIN prep_quiz_questions z ON z.concept_id = ct.concept_id"
+        " GROUP BY t.id ORDER BY t.name"
+    ).fetchall()
+
+
 # --- experience notes ---
 
 

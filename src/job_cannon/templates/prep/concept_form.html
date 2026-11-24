@@ -27,7 +27,7 @@
   </div>
 </form>
 {% if concept %}
-<form method="post" action="/prep/concepts/{{ concept.id }}/delete" onsubmit="return confirm('Delete this concept? The questions it is linked to are kept.')">
+<form method="post" action="/prep/concepts/{{ concept.id }}/delete" onsubmit="return confirm('Delete this concept and its quiz questions? The interview questions it is linked to are kept.')">
   <button class="outline danger-btn">Delete concept</button>
 </form>
 {% endif %}

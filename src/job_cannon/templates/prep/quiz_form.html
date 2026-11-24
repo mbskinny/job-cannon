@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if question else 'New' }} quiz question{% endblock %}
+{% block content %}
+{% set back = values.next or ('/prep/concepts/%s#quiz' % values.concept_id if values.concept_id else '/prep/quiz') %}
+<h1>{{ 'Edit quiz question' if question else 'New quiz question' }}</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if not concepts %}
+<p>A quiz question tests a concept, so <a href="/prep/concepts/new">add a concept</a> first.</p>
+{% else %}
+<form method="post" action="{{ '/prep/quiz/%d' % question.id if question else '/prep/quiz' }}">
+  {% if values.next %}<input type="hidden" name="next" value="{{ values.next }}">{% endif %}
+  <label>Concept *
+    <select name="concept_id" required>
+      <option value="">Choose the concept it tests…</option>
+      {% for c in concepts %}<option value="{{ c.id }}" {% if c.id|string == values.concept_id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Question *
+    <textarea name="prompt" rows="3" required {% if not question %}autofocus{% endif %} placeholder="e.g. What does an unbuffered channel send do?">{{ values.prompt or '' }}</textarea>
+  </label>
+  <label>Code <small class="muted">(optional, shown under the question)</small>
+    <textarea name="code" rows="4" class="quiz-code-input" spellcheck="false">{{ values.code or '' }}</textarea>
+  </label>
+  <label>Correct answer *
+    <input name="answer" value="{{ values.answer or '' }}" required>
+  </label>
+  <fieldset>
+    <legend>Wrong answers *</legend>
+    <small>Three plausible ones: the mistakes someone who half-knows the concept would make. The order is shuffled each time.</small>
+    {% for i in range(1, 4) %}
+    <input name="wrong_{{ i }}" value="{{ values['wrong_%d' % i] or '' }}" required aria-label="Wrong answer {{ i }}">
+    {% endfor %}
+  </fieldset>
+  <label>Explanation
+    <textarea name="explanation" rows="4" placeholder="Why the answer is right, shown after answering.">{{ values.explanation or '' }}</textarea>
+  </label>
+  {% if question %}<p class="muted">Answered right {{ question.right_count }} of {{ question.right_count + question.wrong_count }} times. Editing keeps the results.</p>{% endif %}
+  <div class="form-actions">
+    <button type="submit">Save</button>
+    <a href="{{ back }}" role="button" class="secondary outline">Back</a>
+  </div>
+</form>
+{% if question %}
+<form method="post" action="/prep/quiz/{{ question.id }}/delete" onsubmit="return confirm('Delete this quiz question?')">
+  {% if values.next %}<input type="hidden" name="next" value="{{ values.next }}">{% endif %}
+  <button class="outline danger-btn">Delete quiz question</button>
+</form>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -7,7 +7,7 @@ app is picked up without a restart, and every result names the profile it came
 from. Each call opens its own connection and closes it, so the server can run
 next to the app. It refuses to touch a database that newer code has migrated
 (``db.check_schema``: this process is then older than the data, so ``/mcp`` must
-reconnect it), and keeps hourly snapshots of it (``db.snapshot_if_due``). Writes only add rows (a question, an answer, a concept) through the
+reconnect it), and keeps hourly snapshots of it (``db.snapshot_if_due``). Writes only add rows (a question, an answer, a concept, a quiz question) through the
 ``repo`` functions; nothing here updates or deletes.
 """
 
@@ -28,7 +28,8 @@ INSTRUCTIONS = """\
 Job Cannon is the user's local job-search tracker: applications, and an
 interview prep bank of questions with practice answers, plus concepts: short
 explanations of a tool, method or idea that the user rehearses so they can
-explain it quickly in any answer, and experience notes: the user's own raw
+explain it quickly in any answer, quiz questions: multiple-choice questions
+that test a concept, with the user's results, and experience notes: the user's own raw
 notes about their work (jobs, projects, stories, numbers). Treat experience
 notes as facts about the user alongside their résumé, and draw on them for
 specifics when drafting answers. Every result names the
@@ -199,6 +200,45 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
             return {
                 "profile": profile_name, "concept_id": concept_id, "existing": existing,
                 "url": f"http://127.0.0.1:8765/prep/concepts/{concept_id}",
+            }
+
+    @server.tool(annotations=READ)
+    def list_quiz_questions(concept_id: int | None = None, tags: list[str] | None = None) -> dict[str, Any]:
+        """List the multiple-choice quiz questions on interview prep concepts, with their answers and the
+        user's results (right_count, wrong_count, last_correct). concept_id: only that concept's.
+        tags: only questions on concepts with all of these tags."""
+        with opened() as (name, _cfg, conn):
+            rows = prep.list_quiz_questions(conn, tags=tags or [], concept_id=concept_id)
+            return {"profile": name, "quiz_questions": [agent_data.quiz_question_dict(r) for r in rows]}
+
+    @server.tool(annotations=ADD)
+    def create_quiz_question(
+        concept_id: int, prompt: str, answer: str, wrong_answers: list[str], explanation: str, code: str = "",
+    ) -> dict[str, Any]:
+        """Add a multiple-choice quiz question that tests one prep concept (see list_prep_concepts).
+        prompt: the question, testing understanding rather than recall of wording. answer: the correct
+        option. wrong_answers: exactly 3 plausible wrong options, the mistakes of someone who half-knows the
+        concept, about as long as the answer (options are shuffled). explanation: one or two sentences on
+        why, shown after answering. code: an optional snippet shown under the question. Wrap code in
+        backticks inside text. If the concept already has a question with the same prompt, returns it
+        unchanged (existing=true). Ask the user first."""
+        with opened() as (name, _cfg, conn):
+            if prep.get_concept(conn, concept_id) is None:
+                raise ToolError(f"No prep concept with id {concept_id}.")
+            same = prep.find_quiz_question(conn, concept_id, prompt)
+            if same:
+                question_id, existing = same["id"], True
+            else:
+                try:
+                    question_id = prep.create_quiz_question(
+                        conn, concept_id, prompt, answer, wrong_answers, explanation, code,
+                    )
+                except ValueError as exc:
+                    raise ToolError(str(exc)) from exc
+                existing = False
+            return {
+                "profile": name, "quiz_question_id": question_id, "existing": existing,
+                "url": f"http://127.0.0.1:8765/prep/quiz?concept={concept_id}",
             }
 
     @server.tool(annotations=READ)

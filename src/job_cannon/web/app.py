@@ -48,6 +48,7 @@ templates.env.globals.update(
     INTERACTION_KINDS=interactions.KINDS,
     ANSWER_MODES=prep.ANSWER_MODES,
     TRANSCRIPT_STATUSES=prep.TRANSCRIPT_STATUSES,
+    QUIZ_FOCUS_BELOW=prep.QUIZ_FOCUS_BELOW,
 )
 
 
@@ -237,11 +238,11 @@ def create_app(root: Path, profile: str | None = None) -> FastAPI:
     from job_cannon.web.routes import applications as r_apps
     from job_cannon.web.routes import board, contacts, cover_letters, dashboard, files, find_jobs
     from job_cannon.web.routes import prep as r_prep
-    from job_cannon.web.routes import prep_concepts, prep_experience
+    from job_cannon.web.routes import prep_concepts, prep_experience, prep_quiz
     from job_cannon.web.routes import profiles as r_profiles
     from job_cannon.web.routes import interactions as r_interactions
 
-    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, prep_concepts, prep_experience, r_prep, r_profiles, find_jobs):
+    for module in (dashboard, r_apps, board, contacts, r_interactions, files, cover_letters, prep_concepts, prep_experience, prep_quiz, r_prep, r_profiles, find_jobs):
         app.include_router(module.router)
 
     return app

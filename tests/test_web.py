@@ -571,3 +571,59 @@ def test_default_base_letter(client):
     client.post(f"/cover-letters/{ids['Beta']}/default", data={"on": "0"})
     assert client.get("/cover-letters").text.count("Make default") == 2
     assert client.post("/cover-letters/999/default").status_code == 404
+
+
+def test_prep_quiz_pages(client):
+    import json
+    assert 'href="/prep/quiz"' in client.get("/prep").text
+    page = client.get("/prep/quiz").text
+    assert "No quiz questions yet" in page and 'aria-current="page">Quiz' in page
+
+    k_url = client.post("/prep/concepts", data={"name": "WAL", "explanation": "Log first.", "tags": "databases"},
+                        follow_redirects=False).headers["location"]
+    k_id = k_url.rsplit("/", 1)[1]
+    client.post("/prep/concepts", data={"name": "RAG", "tags": "ai"})
+    assert 'href="/prep/quiz/new?concept=%s"' % k_id in client.get(k_url).text
+    form = client.get(f"/prep/quiz/new?concept={k_id}").text
+    assert f'<option value="{k_id}" selected>WAL' in form
+
+    good = {"concept_id": k_id, "prompt": "When does COMMIT return?", "code": "BEGIN;\n  COMMIT;", "answer": "After the WAL flush",
+            "wrong_1": "Immediately", "wrong_2": "After pages are written", "wrong_3": "After replicas confirm",
+            "explanation": "Durability comes from the log."}
+    bad = client.post("/prep/quiz", data=good | {"wrong_3": "immediately"})
+    assert bad.status_code == 422 and "must all be different" in bad.text and "After replicas" not in bad.text
+    assert client.post("/prep/quiz", data=good | {"concept_id": ""}).status_code == 422
+    resp = client.post("/prep/quiz", data=good, follow_redirects=False)
+    assert resp.headers["location"] == f"/prep/concepts/{k_id}#quiz"
+
+    concept_page = client.get(k_url).text
+    assert "When does COMMIT return?" in concept_page and "not tried yet" in concept_page
+    assert f'href="/prep/quiz?concept={k_id}"' in concept_page
+    play = client.get("/prep/quiz").text
+    deck = json.loads(re.search(r'<script type="application/json" id="quiz-data">(.*?)</script>', play, re.S).group(1))
+    assert [(d["concept"], d["answer"], d["wrong"], d["code"]) for d in deck] == [
+        ("WAL", "After the WAL flush", ["Immediately", "After pages are written", "After replicas confirm"], "BEGIN;\n  COMMIT;")]
+    assert 'name="tag" value="databases"' in play and 'value="ai"' not in play  # only topics with questions
+    assert '<script src="/static/prep-quiz.js"' in play
+    assert "No quiz questions match" in client.get("/prep/quiz?tag=ai").text
+    q_id = deck[0]["id"]
+
+    # Answers are recorded; focus mode drops it once it's been answered right.
+    assert client.post(f"/prep/quiz/{q_id}/answer", data={"correct": "maybe"}).status_code == 400
+    assert client.post(f"/prep/quiz/{q_id}/answer", data={"correct": "1"}).status_code == 204
+    assert "Nothing to focus on" in client.get("/prep/quiz?focus=1").text
+    client.post(f"/prep/quiz/{q_id}/answer", data={"correct": "0"})
+    assert "quiz-data" in client.get(f"/prep/quiz?focus=1&concept={k_id}").text
+    assert "right 1 of 2 times (50%)" in client.get(k_url).text and "missed last time" in client.get(k_url).text
+    stale = client.post(f"/prep/quiz/{q_id}/answer", data={"correct": "1"}, headers={"X-Job-Cannon-Profile": "someone-else"})
+    assert stale.status_code == 409
+
+    edit = client.get(f"/prep/quiz/{q_id}/edit?next=/prep/quiz").text
+    assert "Answered right 1 of 2 times" in edit and 'name="next" value="/prep/quiz"' in edit
+    resp = client.post(f"/prep/quiz/{q_id}", data=good | {"answer": "Once the log is on disk", "next": "/prep/quiz"}, follow_redirects=False)
+    assert resp.headers["location"] == "/prep/quiz"
+    assert "Once the log is on disk" in client.get("/prep/quiz").text
+    assert client.post(f"/prep/quiz/{q_id}", data=good | {"prompt": " "}).status_code == 422
+    client.post(f"/prep/quiz/{q_id}/delete")
+    assert client.get(f"/prep/quiz/{q_id}/edit").status_code == 404
+    assert client.post("/prep/quiz/999/answer", data={"correct": "1"}).status_code == 404
