@@ -205,13 +205,19 @@ def main(argv: list[str] | None = None) -> None:
             if p.config(root).db_path.exists() or not args.all:
                 print(backup(p.config(root), args.out, label=p.id))
     else:
-        serve(
-            root,
-            profile,
-            host=getattr(args, "host", "127.0.0.1"),
-            port=getattr(args, "port", 8765),
-            open_browser=not getattr(args, "no_browser", False),
-        )
+        try:
+            serve(
+                root,
+                profile,
+                host=getattr(args, "host", "127.0.0.1"),
+                port=getattr(args, "port", 8765),
+                open_browser=not getattr(args, "no_browser", False),
+            )
+        except db.SchemaTooNew as exc:
+            raise SystemExit(
+                f"Not starting: the database is at schema version {exc.version}, newer than this copy of "
+                f"Job Cannon knows (version {db.SCHEMA_VERSION}). Update it (git pull, then uv sync) and try again."
+            )
 
 
 if __name__ == "__main__":

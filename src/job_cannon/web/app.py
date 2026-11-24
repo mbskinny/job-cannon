@@ -99,9 +99,11 @@ def safe_next(value: str | None, fallback: str) -> str:
 
 
 def conn(request: Request):
-    """The active profile's connection."""
+    """The active profile's connection (``db.SchemaTooNew`` if newer code has migrated it)."""
     state = request.app.state
-    return state.conns[state.active]
+    connection = state.conns[state.active]
+    db.check_schema(connection)
+    return connection
 
 
 def config(request: Request) -> Config:
@@ -133,7 +135,13 @@ def open_profile(app: FastAPI, profile_id: str) -> None:
     cfg = app.state.profiles[profile_id].config(app.state.root)
     cfg.ensure_dirs()
     connection = db.connect(cfg.db_path)
-    db.migrate(connection)
+    try:
+        db.check_schema(connection)
+        snapshot(app, profile_id, connection)
+        db.migrate(connection)
+    except BaseException:
+        connection.close()
+        raise
     prep.fail_pending(connection)
     search_runs.fail_running(connection)
     app.state.conns[profile_id] = connection
@@ -142,7 +150,15 @@ def open_profile(app: FastAPI, profile_id: str) -> None:
 def profile_conn(app: FastAPI, profile_id: str):
     """Any profile's connection, opening it if needed (for pages that name the profile)."""
     open_profile(app, profile_id)
-    return app.state.conns[profile_id]
+    connection = app.state.conns[profile_id]
+    db.check_schema(connection)
+    return connection
+
+
+def snapshot(app: FastAPI, profile_id: str, connection) -> None:
+    """An automatic snapshot of a profile's database, if one is due (see ``db.snapshot_if_due``)."""
+    folder = profiles.backup_dir(app.state.root, app.state.profiles[profile_id]) / "auto"
+    db.snapshot_if_due(connection, folder)
 
 
 def close_profile(app: FastAPI, profile_id: str) -> None:
@@ -169,6 +185,22 @@ def create_app(root: Path, profile: str | None = None) -> FastAPI:
         profiles.set_active(root, profile)
     load_profiles(app)
     open_profile(app, app.state.active)
+
+    # A copy of the app started before an update must not write with its old code.
+    @app.exception_handler(db.SchemaTooNew)
+    async def schema_too_new(_request: Request, exc: db.SchemaTooNew):
+        return PlainTextResponse(str(exc), status_code=503)
+
+    # Snapshot the active profile before a write when the last copy is over an hour old,
+    # since the app can run for days after opening a profile. (Middleware added first runs
+    # innermost, so this only sees requests that the checks below let through.)
+    @app.middleware("http")
+    async def snapshot_before_writes(request: Request, call_next):
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            state = request.app.state
+            if state.active in state.conns:
+                snapshot(request.app, state.active, state.conns[state.active])
+        return await call_next(request)
 
     # Only answer to localhost names (blocks DNS-rebinding), and reject
     # form posts that originate from some other website.

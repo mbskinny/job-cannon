@@ -95,7 +95,7 @@ def main() -> int:
         return 0
 
     if not args.no_backup:
-        backup_dir = root.parent / f"{root.name}-backups" / profile.id
+        backup_dir = profiles.backup_dir(root, profile)
         backup_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(
             ["job-cannon", "--data-dir", str(root), "--profile", profile.id, "backup", "--out", str(backup_dir)],

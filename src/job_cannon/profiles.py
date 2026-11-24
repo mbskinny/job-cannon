@@ -328,6 +328,13 @@ def delete_resume(data_dir: Path) -> str | None:
     return existing.name
 
 
+def backup_dir(root: Path, profile: Profile) -> Path:
+    """Where a profile's backups go: ``<root>-backups/<id>/`` beside the data folder, so they
+    survive deleting the profile. The skill scripts write zips there before they change
+    anything, and the app and MCP server keep automatic database snapshots in its ``auto/``."""
+    return root.parent / f"{root.name}-backups" / profile.id
+
+
 def profile_files(data_dir: Path) -> list[Path]:
     """Files besides the database and files/ that belong to a profile (for backups)."""
     found = [data_dir / JOB_SEARCH_FILE, resume_file(data_dir)]

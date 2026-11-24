@@ -5,7 +5,9 @@ The profile is resolved on every call, the same way as the CLI (``--profile``,
 then ``JOB_CANNON_PROFILE``, then the active one), so switching profiles in the
 app is picked up without a restart, and every result names the profile it came
 from. Each call opens its own connection and closes it, so the server can run
-next to the app. Writes only add rows (a question, an answer, a concept) through the
+next to the app. It refuses to touch a database that newer code has migrated
+(``db.check_schema``: this process is then older than the data, so ``/mcp`` must
+reconnect it), and keeps hourly snapshots of it (``db.snapshot_if_due``). Writes only add rows (a question, an answer, a concept) through the
 ``repo`` functions; nothing here updates or deletes.
 """
 
@@ -56,6 +58,11 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
             raise ToolError(f"Profile {p.name} has no Job Cannon database yet ({cfg.db_path}).")
         conn = db.connect(cfg.db_path)
         try:
+            try:
+                db.check_schema(conn)
+            except db.SchemaTooNew as exc:
+                raise ToolError(str(exc)) from exc
+            db.snapshot_if_due(conn, profiles.backup_dir(root, p) / "auto")
             db.migrate(conn)
             yield p.name, cfg, conn
         finally:
