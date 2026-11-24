@@ -31,6 +31,7 @@ def test_tools_listed_with_read_only_hints(call):
         "list_applications", "get_application", "list_prep_questions", "get_prep_question",
         "save_prep_answer", "create_prep_question", "list_prep_concepts", "get_prep_concept", "create_prep_concept",
         "list_experience_notes", "create_experience_note", "list_quiz_questions", "create_quiz_question",
+        "link_prep_concepts",
     }
     assert tools["get_prep_question"].annotations.read_only_hint is True
     assert tools["save_prep_answer"].annotations.read_only_hint is False
@@ -125,6 +126,33 @@ def test_prep_concepts(call, conn):
         asyncio.run(call.server.call_tool("create_prep_concept", {"name": "X", "explanation": "", "question_ids": [999]}))
     with pytest.raises(ToolError, match="No prep concept"):
         asyncio.run(call.server.call_tool("get_prep_concept", {"concept_id": 999}))
+
+
+def test_linking_questions_and_concepts(call, conn):
+    stacks = prep.create_concept(conn, "Goroutine stacks", "Small, growable stacks.")
+    heap = prep.create_concept(conn, "Escape analysis", "Decides stack or heap.")
+
+    made = call("create_prep_question", prompt="How do goroutine stacks grow?", concept_ids=[stacks])
+    assert [c["id"] for c in prep.concepts_for_question(conn, made["question_id"])] == [stacks]
+    # An existing question is returned unchanged, even with concept_ids.
+    again = call("create_prep_question", prompt="how do goroutine stacks grow?", concept_ids=[heap])
+    assert again["existing"] is True
+    assert [c["id"] for c in prep.concepts_for_question(conn, made["question_id"])] == [stacks]
+
+    linked = call("link_prep_concepts", question_id=made["question_id"], concept_ids=[stacks, heap])
+    assert linked["newly_linked"] == [heap]
+    assert sorted(c["id"] for c in linked["concepts"]) == sorted([stacks, heap])
+    assert linked["url"].endswith(f"/prep/{made['question_id']}#concepts")
+    assert call("link_prep_concepts", question_id=made["question_id"], concept_ids=[heap])["newly_linked"] == []
+    assert [q["id"] for q in call("get_prep_concept", concept_id=heap)["questions"]] == [made["question_id"]]
+
+    with pytest.raises(ToolError, match="No prep question"):
+        asyncio.run(call.server.call_tool("link_prep_concepts", {"question_id": 999, "concept_ids": [stacks]}))
+    with pytest.raises(ToolError, match="No prep concept"):
+        asyncio.run(call.server.call_tool("link_prep_concepts", {"question_id": made["question_id"], "concept_ids": [999]}))
+    with pytest.raises(ToolError, match="No prep concept"):  # checked before the question is created
+        asyncio.run(call.server.call_tool("create_prep_question", {"prompt": "New one?", "concept_ids": [999]}))
+    assert not [q for q in prep.list_questions(conn) if q["prompt"] == "New one?"]
 
 
 def test_experience_notes(call, conn):

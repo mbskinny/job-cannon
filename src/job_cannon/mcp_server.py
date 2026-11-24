@@ -7,8 +7,8 @@ app is picked up without a restart, and every result names the profile it came
 from. Each call opens its own connection and closes it, so the server can run
 next to the app. It refuses to touch a database that newer code has migrated
 (``db.check_schema``: this process is then older than the data, so ``/mcp`` must
-reconnect it), and keeps hourly snapshots of it (``db.snapshot_if_due``). Writes only add rows (a question, an answer, a concept, a quiz question) through the
-``repo`` functions; nothing here updates or deletes.
+reconnect it), and keeps hourly snapshots of it (``db.snapshot_if_due``). Writes only add rows (a question, an answer, a concept, a quiz question, a
+question-concept link) through the ``repo`` functions; nothing here updates or deletes.
 """
 
 import os
@@ -75,6 +75,12 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
             raise ToolError(f"No prep question with id {question_id}.")
         return row
 
+    def concept_or_error(conn, concept_id: int):
+        row = prep.get_concept(conn, concept_id)
+        if row is None:
+            raise ToolError(f"No prep concept with id {concept_id}.")
+        return row
+
     @server.tool(
         annotations=READ,
         description=(
@@ -135,11 +141,16 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
             }
 
     @server.tool(annotations=ADD)
-    def create_prep_question(prompt: str, notes: str = "", tags: list[str] | None = None) -> dict[str, Any]:
+    def create_prep_question(
+        prompt: str, notes: str = "", tags: list[str] | None = None, concept_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
         """Add a question to the interview prep bank, worded generically ("Why do you want to work here?",
-        not "Why Acme?"), with a few lowercase tags and optional notes (talking points). If a question with
-        the same wording exists, returns it instead (existing=true). Ask the user first."""
+        not "Why Acme?"), with a few lowercase tags and optional notes (talking points). concept_ids: prep
+        concepts that come up in it (see list_prep_concepts). If a question with the same wording exists,
+        returns it unchanged instead (existing=true; use link_prep_concepts to link it). Ask the user first."""
         with opened() as (name, _cfg, conn):
+            for concept_id in concept_ids or []:
+                concept_or_error(conn, concept_id)
             wording = " ".join((prompt or "").split())
             same = [q for q in prep.list_questions(conn) if q["prompt"].casefold() == wording.casefold()]
             if same:
@@ -149,9 +160,31 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
                     question_id, existing = prep.create_question(conn, wording, notes, tags or []), False
                 except ValueError as exc:
                     raise ToolError(str(exc)) from exc
+                for concept_id in concept_ids or []:
+                    prep.link_concept(conn, question_id, concept_id)
             return {
                 "profile": name, "question_id": question_id, "existing": existing,
                 "url": f"http://127.0.0.1:8765/prep/{question_id}",
+            }
+
+    @server.tool(annotations=ADD)
+    def link_prep_concepts(question_id: int, concept_ids: list[int]) -> dict[str, Any]:
+        """Link prep concepts to a prep question, so the concepts show on the question's page and the
+        question on each concept's page. Linking one that's already linked does nothing. Returns every
+        concept now linked to the question, and which ids this call newly linked. Ask the user first."""
+        with opened() as (name, _cfg, conn):
+            question_or_error(conn, question_id)
+            for concept_id in concept_ids:
+                concept_or_error(conn, concept_id)
+            before = {c["id"] for c in prep.concepts_for_question(conn, question_id)}
+            for concept_id in concept_ids:
+                prep.link_concept(conn, question_id, concept_id)
+            concepts = prep.concepts_for_question(conn, question_id)
+            return {
+                "profile": name, "question_id": question_id,
+                "newly_linked": [c["id"] for c in concepts if c["id"] not in before],
+                "concepts": [{"id": c["id"], "name": c["name"]} for c in concepts],
+                "url": f"http://127.0.0.1:8765/prep/{question_id}#concepts",
             }
 
     @server.tool(annotations=READ)
@@ -167,10 +200,7 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
     def get_prep_concept(concept_id: int) -> dict[str, Any]:
         """One interview prep concept with its explanation, notes and the questions it's linked to."""
         with opened() as (name, _cfg, conn):
-            row = prep.get_concept(conn, concept_id)
-            if row is None:
-                raise ToolError(f"No prep concept with id {concept_id}.")
-            return {"profile": name, **agent_data.concept_with_questions(conn, row)}
+            return {"profile": name, **agent_data.concept_with_questions(conn, concept_or_error(conn, concept_id))}
 
     @server.tool(annotations=ADD)
     def create_prep_concept(
@@ -223,8 +253,7 @@ def build_server(data_dir: str | os.PathLike | None = None, profile: str | None 
         backticks inside text. If the concept already has a question with the same prompt, returns it
         unchanged (existing=true). Ask the user first."""
         with opened() as (name, _cfg, conn):
-            if prep.get_concept(conn, concept_id) is None:
-                raise ToolError(f"No prep concept with id {concept_id}.")
+            concept_or_error(conn, concept_id)
             same = prep.find_quiz_question(conn, concept_id, prompt)
             if same:
                 question_id, existing = same["id"], True
