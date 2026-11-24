@@ -461,11 +461,13 @@ QUIZ_FOCUS_BELOW = 0.7
 
 def list_quiz_questions(
     conn, tags: list[str] | None = None, concept_id: int | None = None, focus: bool = False,
+    checked_before: str | None = None,
 ) -> list[sqlite3.Row]:
     """Quiz questions whose concept has *all* of ``tags`` (and is ``concept_id``, if given).
 
     ``focus`` keeps the ones worth practising: never answered, last answered wrong,
-    or right less than ``QUIZ_FOCUS_BELOW`` of the time.
+    or right less than ``QUIZ_FOCUS_BELOW`` of the time. ``checked_before`` (an ISO
+    time) keeps the ones due for an accuracy check: never checked, or checked before then.
     """
     where, params = _tag_filter("concepts", "c", tags or [])
     if concept_id is not None:
@@ -477,6 +479,9 @@ def list_quiz_questions(
             " OR z.right_count < ? * (z.right_count + z.wrong_count))"
         )
         params.append(QUIZ_FOCUS_BELOW)
+    if checked_before is not None:
+        where.append("(z.checked_at IS NULL OR z.checked_at < ?)")
+        params.append(checked_before)
     sql = _QUIZ_SELECT + (" WHERE " + " AND ".join(where) if where else "")
     return conn.execute(sql + " ORDER BY c.name COLLATE NOCASE, z.id", params).fetchall()
 
@@ -538,15 +543,30 @@ def update_quiz_question(
     conn, question_id: int, concept_id: int, prompt: str, answer: str, wrong_answers: list[str],
     explanation: str = "", code: str = "",
 ) -> None:
-    """Change a quiz question's wording; its results are kept."""
+    """Change a quiz question's wording. Its results are kept; a real change means it needs
+    checking for accuracy again, so ``checked_at`` is cleared."""
     concept_id, prompt, answer, wrong, explanation, code = _clean_quiz(
         conn, concept_id, prompt, answer, wrong_answers, explanation, code,
     )
+    old = get_quiz_question(conn, question_id)
+    unchanged = old is not None and (
+        old["concept_id"], old["prompt"], old["code"], old["answer"], quiz_wrong_answers(old), old["explanation"]
+    ) == (concept_id, prompt, code, answer, wrong, explanation)
+    if unchanged:
+        return
     with conn:
         conn.execute(
             "UPDATE prep_quiz_questions SET concept_id = ?, prompt = ?, code = ?, answer = ?, wrong_1 = ?,"
-            " wrong_2 = ?, wrong_3 = ?, explanation = ?, updated_at = ? WHERE id = ?",
+            " wrong_2 = ?, wrong_3 = ?, explanation = ?, checked_at = NULL, updated_at = ? WHERE id = ?",
             (concept_id, prompt, code, answer, *wrong, explanation, now(), question_id),
+        )
+
+
+def mark_quiz_checked(conn, question_ids) -> None:
+    """Record that these quiz questions were just checked for accuracy."""
+    with conn:
+        conn.executemany(
+            "UPDATE prep_quiz_questions SET checked_at = ? WHERE id = ?", [(now(), int(i)) for i in question_ids]
         )
 
 

@@ -113,4 +113,5 @@ def quiz_question_dict(row: sqlite3.Row) -> dict:
         "wrong_answers": prep.quiz_wrong_answers(row), "explanation": row["explanation"],
         "right_count": row["right_count"], "wrong_count": row["wrong_count"],
         "last_correct": None if row["last_correct"] is None else bool(row["last_correct"]),
+        "checked_at": row["checked_at"],
     }

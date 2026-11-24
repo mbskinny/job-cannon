@@ -546,3 +546,18 @@ def test_quiz_filters_focus_results_and_cascade(conn):
     prep.delete_concept(conn, db_k)
     assert ids() == [c]
 
+
+def test_quiz_checked_for_accuracy(conn):
+    from job_cannon.repo import prep
+    k = prep.create_concept(conn, "WAL")
+    a, b = _quiz(conn, k, "A?"), _quiz(conn, k, "B?")
+    due = lambda before="": [r["id"] for r in prep.list_quiz_questions(conn, checked_before=before)]
+    assert due() == [a, b]
+    prep.mark_quiz_checked(conn, [a])
+    assert due() == [b] and due("9999") == [a, b]
+    assert prep.get_quiz_question(conn, a)["checked_at"]
+    # Saving without a change keeps the check; a real change clears it.
+    prep.update_quiz_question(conn, a, k, "A?", "Right", ["W1", "W2", "W3"])
+    assert due() == [b]
+    prep.update_quiz_question(conn, a, k, "A, reworded?", "Right", ["W1", "W2", "W3"])
+    assert due() == [a, b]

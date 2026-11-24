@@ -34,7 +34,8 @@
   <label>Explanation
     <textarea name="explanation" rows="4" placeholder="Why the answer is right, shown after answering.">{{ values.explanation or '' }}</textarea>
   </label>
-  {% if question %}<p class="muted">Answered right {{ question.right_count }} of {{ question.right_count + question.wrong_count }} times. Editing keeps the results.</p>{% endif %}
+  {% if question %}<p class="muted">Answered right {{ question.right_count }} of {{ question.right_count + question.wrong_count }} times. Editing keeps the results.
+    {% if question.checked_at %}Last checked for accuracy {{ question.checked_at[:10] }}; saving changes clears that.{% else %}Not checked for accuracy yet.{% endif %}</p>{% endif %}
   <div class="form-actions">
     <button type="submit">Save</button>
     <a href="{{ back }}" role="button" class="secondary outline">Back</a>
